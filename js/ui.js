@@ -136,6 +136,58 @@ const UI = (() => {
     return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // ---------------- Sync results (per-file live status) ----------------
+
+  function initSyncResultsList(container, items) {
+    container.innerHTML = '';
+    for (const item of items) {
+      const row = document.createElement('div');
+      row.className = 'file-row result-row';
+      row.dataset.path = item.path;
+      row.innerHTML = `
+        <div class="file-row-top">
+          <span class="status-badge pending" data-role="badge">${badgeLabel(item.status)}</span>
+          <span class="file-path">${escapeHtml(item.path)}</span>
+        </div>
+        <div class="file-row-action hidden" data-role="error"></div>
+      `;
+      container.appendChild(row);
+    }
+  }
+
+  function setSyncResultStatus(container, path, status, errorMessage) {
+    const row = container.querySelector(`.result-row[data-path="${cssEscape(path)}"]`);
+    if (!row) return;
+    const badge = row.querySelector('[data-role="badge"]');
+    badge.className = `status-badge ${status}`;
+    badge.textContent = status === 'success' ? '✓ DONE' : status === 'failed' ? '✕ FAILED' : status.toUpperCase();
+    if (errorMessage) {
+      const errEl = row.querySelector('[data-role="error"]');
+      errEl.textContent = errorMessage;
+      errEl.classList.remove('hidden');
+      errEl.style.color = 'var(--red)';
+    }
+  }
+
+  function cssEscape(s) {
+    return window.CSS && CSS.escape ? CSS.escape(s) : s.replace(/["\\]/g, '\\$&');
+  }
+
+  function renderSyncSummary(successCount, failedCount) {
+    document.getElementById('results-count-success').textContent = `${successCount} Succeeded`;
+    document.getElementById('results-count-failed').textContent = `${failedCount} Failed`;
+    const banner = document.getElementById('sync-results-banner');
+    const retryBtn = document.getElementById('results-retry-btn');
+    banner.classList.remove('hidden');
+    if (failedCount === 0) {
+      banner.innerHTML = `<div class="success-check">✓</div><div class="success-title">All files have been changed successfully</div>`;
+      retryBtn.classList.add('hidden');
+    } else {
+      banner.innerHTML = `<div class="conflict-icon">⚠</div><div class="success-title">${failedCount} file(s) failed — no commit was created</div><p class="hint">Fix the issue below and try again. Nothing was changed on GitHub.</p>`;
+      retryBtn.classList.remove('hidden');
+    }
+  }
+
   function openDiffModal(title, bodyHtml) {
     document.getElementById('diff-modal-title').textContent = title;
     document.getElementById('diff-modal-body').innerHTML = bodyHtml;
@@ -158,6 +210,7 @@ const UI = (() => {
     showView, setNavActive, toast, setProgress,
     renderRepoOptions, renderBranchOptions, renderLastCommit,
     renderSummaryCounts, renderDeletionsWarning, renderFileList,
-    openDiffModal, closeDiffModal, renderDiffOps, escapeHtml
+    openDiffModal, closeDiffModal, renderDiffOps, escapeHtml,
+    initSyncResultsList, setSyncResultStatus, renderSyncSummary
   };
 })();

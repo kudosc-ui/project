@@ -79,8 +79,13 @@
           <span class="upload-icon">↑</span>
           <span>Upload Project Folder</span>
         </button>
+        <button id="upload-zip-btn" class="upload-cta upload-cta-secondary" disabled>
+          <span class="upload-icon">📦</span>
+          <span>Upload ZIP File</span>
+        </button>
         <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden">
         <input type="file" id="files-input" multiple class="hidden">
+        <input type="file" id="zip-input" accept=".zip,application/zip" class="hidden">
         <button id="fallback-files-btn" class="btn-link small hidden">Folder upload not supported — select files instead</button>
 
         <div class="card" id="last-commit-card" style="display:none">
@@ -97,6 +102,16 @@
           <div class="progress-track"><div id="progress-bar" class="progress-fill" style="width:0%"></div></div>
           <div id="progress-percent" class="progress-percent">0%</div>
           <div id="progress-detail" class="progress-detail"></div>
+        </div>
+      </section>
+
+      <!-- ============ ZIP EXTRACTION PROGRESS VIEW ============ -->
+      <section id="view-zip-progress" class="view">
+        <div class="card center-card">
+          <div id="zip-progress-label" class="progress-label">Extracting ZIP file…</div>
+          <div class="progress-track"><div id="zip-progress-bar" class="progress-fill" style="width:0%"></div></div>
+          <div id="zip-progress-percent" class="progress-percent">0%</div>
+          <div id="zip-progress-detail" class="progress-detail"></div>
         </div>
       </section>
 
@@ -160,6 +175,26 @@
         <div class="sticky-action two-btn">
           <button id="cancel-commit-btn" class="btn btn-secondary">Cancel</button>
           <button id="commit-btn" class="btn btn-primary">Commit Everything</button>
+        </div>
+      </section>
+
+      <!-- ============ SYNC RESULTS VIEW ============ -->
+      <section id="view-sync-results" class="view">
+        <div class="card">
+          <div class="summary-title">Sync Results</div>
+          <div class="summary-counts">
+            <span class="count added" id="results-count-success">0 Succeeded</span>
+            <span class="count deleted" id="results-count-failed">0 Failed</span>
+          </div>
+        </div>
+
+        <div id="sync-results-list" class="file-list"></div>
+
+        <div id="sync-results-banner" class="card center-card hidden"></div>
+
+        <div class="sticky-action two-btn">
+          <button id="results-back-btn" class="btn btn-secondary">Back to Dashboard</button>
+          <button id="results-retry-btn" class="btn btn-primary hidden">Try Again</button>
         </div>
       </section>
 
@@ -233,9 +268,14 @@
 
 <div id="toast" class="toast hidden"></div>
 
+<!-- JSZip: the one third-party utility used, purely for reading .zip archives
+     client-side. Loaded from a pinned version on cdnjs; everything else in
+     this app remains hand-written vanilla JS. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/github.js"></script>
 <script src="js/files.js"></script>
+<script src="js/zip.js"></script>
 <script src="js/compare.js"></script>
 <script src="js/commit.js"></script>
 <script src="js/ui.js"></script>

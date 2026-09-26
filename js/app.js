@@ -105,6 +105,7 @@
         await onRepoChange(); // load branches + last commit for first repo
       }
       document.getElementById('upload-btn').disabled = false;
+      document.getElementById('upload-zip-btn').disabled = false;
     } catch (e) {
       UI.toast(friendlyError(e));
     }
@@ -161,50 +162,87 @@
 
   async function handleFolderSelected(fileList) {
     if (!fileList || !fileList.length) return;
-    UI.showView('view-progress');
-    UI.setProgress(0, 'Reading project…', '');
-
     try {
       const { rootName, fileMap, skipped, tooLarge } = Files.buildFileMap(fileList);
-      state.uploadedFileMap = fileMap;
-      state.uploadedRootName = rootName;
-
-      if (skipped.length) {
-        UI.toast(`${skipped.length} file(s) skipped (unsafe path or duplicate).`);
-      }
-      if (tooLarge.length) {
-        UI.toast(`${tooLarge.length} file(s) skipped (exceeds size limit).`);
-      }
-
-      // Hash local files (git blob sha1) to detect true modifications.
-      const localHashes = new Map();
-      const entries = Array.from(fileMap.entries());
-      for (let i = 0; i < entries.length; i++) {
-        const [path, file] = entries[i];
-        const buf = await file.arrayBuffer();
-        const sha = await Compare.gitBlobSha1(buf);
-        localHashes.set(path, sha);
-        const pct = Math.round(((i + 1) / entries.length) * 55);
-        UI.setProgress(pct, 'Reading project…', `${i + 1} of ${entries.length} files detected`);
-      }
-      state.localHashes = localHashes;
-
-      // Fetch remote baseline tree.
-      UI.setProgress(60, 'Fetching repository state…', '');
-      const { owner, repo } = splitFullName(state.currentRepoFullName);
-      const baseline = await Commit.captureBaseline(owner, repo, state.currentBranch);
-      state.baseline = baseline;
-
-      UI.setProgress(85, 'Comparing files…', '');
-      const remoteMap = Compare.buildRemoteFileMap(baseline.fullTree);
-      state.diff = Compare.computeDiff(fileMap, localHashes, remoteMap, state.syncMode, rootName);
-
-      UI.setProgress(100, 'Done', '');
-      setTimeout(() => showCompareView(), 200);
+      await proceedWithFileMap(rootName, fileMap, skipped, tooLarge);
     } catch (e) {
       UI.toast(friendlyError(e));
       UI.showView('view-dashboard');
     }
+  }
+
+  function handleZipUploadClick() {
+    document.getElementById('zip-input').click();
+  }
+
+  async function handleZipSelected(file) {
+    if (!file) return;
+    UI.showView('view-zip-progress');
+    setZipProgress(0, 'Extracting ZIP file…', '');
+    try {
+      const { rootName, fileMap, skipped, tooLarge } = await ZipHandler.extractZip(
+        file,
+        (pct, detail) => setZipProgress(pct, 'Extracting ZIP file…', detail)
+      );
+      await proceedWithFileMap(rootName, fileMap, skipped, tooLarge);
+    } catch (e) {
+      UI.toast(friendlyError(e));
+      UI.showView('view-dashboard');
+    }
+  }
+
+  function setZipProgress(pct, label, detail) {
+    document.getElementById('zip-progress-bar').style.width = `${pct}%`;
+    document.getElementById('zip-progress-percent').textContent = `${pct}%`;
+    if (label != null) document.getElementById('zip-progress-label').textContent = label;
+    if (detail != null) document.getElementById('zip-progress-detail').textContent = detail;
+  }
+
+  /**
+   * Shared tail for both folder upload and ZIP upload: hash local files,
+   * fetch the remote baseline, compute the diff, and land on the compare
+   * screen. `fileMap` values may be File objects (folder upload) or Blobs
+   * (ZIP upload) — both support .arrayBuffer() and .size, which is all this
+   * pipeline needs.
+   */
+  async function proceedWithFileMap(rootName, fileMap, skipped, tooLarge) {
+    UI.showView('view-progress');
+    UI.setProgress(0, 'Reading project…', '');
+    state.uploadedFileMap = fileMap;
+    state.uploadedRootName = rootName;
+
+    if (skipped.length) {
+      UI.toast(`${skipped.length} file(s) skipped (unsafe path or duplicate).`);
+    }
+    if (tooLarge.length) {
+      UI.toast(`${tooLarge.length} file(s) skipped (exceeds size limit).`);
+    }
+
+    // Hash local files (git blob sha1) to detect true modifications.
+    const localHashes = new Map();
+    const entries = Array.from(fileMap.entries());
+    for (let i = 0; i < entries.length; i++) {
+      const [path, file] = entries[i];
+      const buf = await file.arrayBuffer();
+      const sha = await Compare.gitBlobSha1(buf);
+      localHashes.set(path, sha);
+      const pct = Math.round(((i + 1) / entries.length) * 55);
+      UI.setProgress(pct, 'Reading project…', `${i + 1} of ${entries.length} files detected`);
+    }
+    state.localHashes = localHashes;
+
+    // Fetch remote baseline tree.
+    UI.setProgress(60, 'Fetching repository state…', '');
+    const { owner, repo } = splitFullName(state.currentRepoFullName);
+    const baseline = await Commit.captureBaseline(owner, repo, state.currentBranch);
+    state.baseline = baseline;
+
+    UI.setProgress(85, 'Comparing files…', '');
+    const remoteMap = Compare.buildRemoteFileMap(baseline.fullTree);
+    state.diff = Compare.computeDiff(fileMap, localHashes, remoteMap, state.syncMode, rootName);
+
+    UI.setProgress(100, 'Done', '');
+    setTimeout(() => showCompareView(), 200);
   }
 
   function showCompareView() {
@@ -316,10 +354,21 @@
 
     const commitBtn = document.getElementById('commit-btn');
     commitBtn.disabled = true;
-    UI.showView('view-progress');
-    UI.setProgress(0, 'Preparing GitHub commit…', '');
 
     const { owner, repo } = splitFullName(state.currentRepoFullName);
+    const changedItems = [...state.diff.added, ...state.diff.modified, ...state.diff.deleted];
+
+    // Show the sync-results page immediately with every file pending, then
+    // fill in success/failed as each one is processed.
+    UI.showView('view-sync-results');
+    const resultsContainer = document.getElementById('sync-results-list');
+    UI.initSyncResultsList(resultsContainer, changedItems.map(i => ({ path: i.path, status: 'pending' })));
+    document.getElementById('sync-results-banner').classList.add('hidden');
+    document.getElementById('results-retry-btn').classList.add('hidden');
+
+    let successCount = 0;
+    let failedCount = 0;
+
     try {
       const result = await Commit.pushCommit({
         owner, repo, branch: state.currentBranch,
@@ -327,16 +376,25 @@
         baseTreeSha: state.baseline.baseTreeSha,
         diff: state.diff,
         message,
-        onProgress: (pct, label) => UI.setProgress(pct, 'Uploading changes…', label)
+        onProgress: () => { /* per-file rows carry the progress signal here */ },
+        onFileResult: ({ path, status, error }) => {
+          UI.setSyncResultStatus(resultsContainer, path, status, error);
+          if (status === 'success') successCount++; else failedCount++;
+        }
       });
-      showSuccess(result, message, owner, repo);
+
+      // Every file succeeded and the commit landed.
+      UI.renderSyncSummary(successCount, 0);
+      setTimeout(() => showSuccess(result, message, owner, repo), 1000);
     } catch (e) {
       if (e.kind === 'conflict') {
         UI.showView('view-conflict');
+      } else if (e.kind === 'partial_failure') {
+        UI.renderSyncSummary(successCount, failedCount);
       } else {
-        UI.showView('view-commit');
-        errEl.textContent = friendlyError(e);
-        errEl.classList.remove('hidden');
+        // Something failed outside the per-file loop (tree/commit/ref step).
+        UI.renderSyncSummary(successCount, changedItems.length - successCount);
+        UI.toast(friendlyError(e));
       }
     } finally {
       commitBtn.disabled = false;
@@ -427,6 +485,16 @@
     document.getElementById('folder-input').addEventListener('change', (e) => handleFolderSelected(e.target.files));
     document.getElementById('files-input').addEventListener('change', (e) => handleFolderSelected(e.target.files));
     document.getElementById('fallback-files-btn').addEventListener('click', () => document.getElementById('files-input').click());
+
+    document.getElementById('upload-zip-btn').addEventListener('click', handleZipUploadClick);
+    document.getElementById('zip-input').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      handleZipSelected(file);
+      e.target.value = ''; // allow re-selecting the same zip later
+    });
+
+    document.getElementById('results-back-btn').addEventListener('click', resetToDashboard);
+    document.getElementById('results-retry-btn').addEventListener('click', () => UI.showView('view-commit'));
 
     document.getElementById('filter-chips').addEventListener('click', handleFilterClick);
     document.getElementById('file-search').addEventListener('input', handleSearchInput);

@@ -147,6 +147,7 @@ input[type="text"]:focus,input[type="password"]:focus,select:focus{
 .upload-cta:hover:not(:disabled){border-color:var(--accent); background:var(--surface-2);}
 .upload-cta:disabled{opacity:.4; cursor:not-allowed;}
 .upload-icon{font-size:20px;}
+.upload-cta-secondary{padding:16px; font-size:14.5px; margin-top:-4px;}
 
 /* ---------- Commit card ---------- */
 .commit-msg{font-weight:600; font-size:15px; margin-top:4px;}
@@ -198,6 +199,10 @@ input[type="text"]:focus,input[type="password"]:focus,select:focus{
 .status-badge.modified{background:rgba(226,185,59,.15); color:var(--yellow);}
 .status-badge.deleted{background:rgba(245,101,101,.15); color:var(--red);}
 .status-badge.unchanged{background:rgba(139,147,163,.15); color:var(--text-dim);}
+.status-badge.pending{background:rgba(79,140,255,.15); color:var(--accent);}
+.status-badge.success{background:rgba(62,207,142,.15); color:var(--green);}
+.status-badge.failed{background:rgba(245,101,101,.15); color:var(--red);}
+.result-row{cursor:default;}
 .file-path{
   font-family:"SF Mono",Consolas,Menlo,monospace; font-size:13px;
   overflow-wrap:anywhere; word-break:break-word; flex:1;

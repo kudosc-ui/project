@@ -61,7 +61,22 @@ You can revoke the token any time from GitHub's settings page, and disconnect
 from within the app (Dashboard → Disconnect, or Settings → Disconnect
 GitHub).
 
-## 3. How folder upload works
+## 3. Two ways to upload: a folder, or a ZIP file
+
+**Option A — Upload Project Folder** (described below).
+
+**Option B — Upload ZIP File.** Click **Upload ZIP File** and pick a `.zip`
+archive of your project. GitSync extracts it entirely in the browser (using
+[JSZip](https://stuk.github.io/jszip/), the one small utility library this
+app uses — everything else is hand-written vanilla JS) — nothing is
+uploaded anywhere just to unzip it. If every file in the archive shares one
+top-level folder (e.g. `kudoscrate/public/app.js`), that folder name is
+stripped the same way a folder upload strips it, so the resulting paths line
+up with your repository (`public/app.js`). From this point on, a ZIP upload
+and a folder upload are processed identically — same hashing, same diffing,
+same commit flow.
+
+## 3a. How folder upload works
 
 Click **Upload Project Folder**, which uses the browser's
 `<input type="file" webkitdirectory>` to let you pick an entire folder (e.g.
@@ -118,6 +133,18 @@ GitSync uses GitHub's low-level **Git Data API** to build one atomic commit:
 
 That's a single commit containing every change, not one commit per file.
 
+**Sync Results page.** When you click **Commit Everything**, GitSync takes
+you to a dedicated results page listing every changed file with a live
+status badge (pending → done/failed) as it's processed. Each file's upload
+to GitHub is attempted independently, so if one file has a problem you can
+see exactly which one and why. If **any** file fails, GitSync stops before
+touching your branch at all — no tree, commit, or ref update is created, so
+nothing partial ever lands in your repository — and the page shows how many
+succeeded vs. failed with a **Try Again** button. If every file succeeds,
+you'll see **"All files have been changed successfully"**, and GitSync
+proceeds automatically to finalize the single commit and show the success
+screen with the commit link.
+
 **Conflict protection:** GitSync records the branch's commit SHA the moment
 you start reviewing changes, and re-checks it immediately before building the
 tree and again immediately before committing. If the branch moved in the
@@ -151,6 +178,10 @@ forward update as a last line of defense.
 - Deletions always require explicit confirmation.
 - All GitHub error responses (401/403/404/409/422/rate limits) are translated
   into plain-language messages — raw HTTP errors are never shown to you.
+- The only third-party code in this app is [JSZip](https://stuk.github.io/jszip/),
+  loaded at a pinned version from cdnjs solely to read `.zip` archives
+  client-side. It never touches your GitHub token or makes any network
+  requests of its own.
 
 ## 8. Project structure
 
@@ -164,6 +195,7 @@ js/
   files.js     # local folder reading, hashing, path safety
   compare.js   # local-vs-remote diffing, line diff
   commit.js    # blob -> tree -> commit -> ref orchestration
+  zip.js       # client-side ZIP extraction (uses JSZip)
   ui.js        # DOM rendering helpers
 README.md
 ```
