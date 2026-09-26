@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>GitSync</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ AUTH / LOGIN VIEW ============ -->
+<section id="view-auth" class="view active">
+  <div class="auth-card">
+    <div class="auth-logo">⇄ GitSync</div>
+    <p class="auth-sub">Sync a local project folder to a GitHub repository in one clean commit.</p>
+
+    <label class="field-label" for="pat-input">GitHub Personal Access Token</label>
+    <input id="pat-input" type="password" placeholder="ghp_..." autocomplete="off" spellcheck="false">
+    <p class="hint">Needs the <code>repo</code> scope. Nothing is sent anywhere except GitHub's API.</p>
+
+    <label class="checkbox-row">
+      <input type="checkbox" id="remember-token">
+      <span>Remember this token on this device (stored in LocalStorage)</span>
+    </label>
+
+    <button id="connect-btn" class="btn btn-primary btn-block">Connect to GitHub</button>
+    <p id="auth-error" class="error-text hidden"></p>
+
+    <button id="how-to-token" class="btn-link">How do I get a token?</button>
+  </div>
+</section>
+
+<!-- ============ APP SHELL ============ -->
+<div id="app-shell" class="hidden">
+  <header class="topbar">
+    <div class="brand">⇄ GitSync</div>
+    <button id="settings-toggle" class="icon-btn" title="Settings">⚙️</button>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <button class="nav-item active" data-nav="dashboard">Dashboard</button>
+      <button class="nav-item" data-nav="history">History</button>
+      <button class="nav-item" data-nav="settings">Settings</button>
+    </nav>
+
+    <main class="content">
+
+      <!-- ============ DASHBOARD VIEW ============ -->
+      <section id="view-dashboard" class="view active">
+        <div class="card">
+          <div class="connected-row">
+            <span class="dot dot-green"></span>
+            <span>Connected as <strong id="username-label">—</strong></span>
+            <button id="disconnect-btn" class="btn-link small">Disconnect</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <label class="field-label">Repository</label>
+          <div class="select-wrap">
+            <select id="repo-select"><option>Loading repositories…</option></select>
+          </div>
+          <input id="repo-search" type="text" placeholder="Search repositories…" class="hidden">
+
+          <label class="field-label">Branch</label>
+          <div class="select-wrap">
+            <select id="branch-select"><option>Select a repository first</option></select>
+          </div>
+
+          <label class="field-label">Sync Mode</label>
+          <div class="radio-row">
+            <label><input type="radio" name="sync-mode" value="repo"> Entire repository</label>
+            <label><input type="radio" name="sync-mode" value="folder" checked> Selected folder only</label>
+          </div>
+        </div>
+
+        <button id="upload-btn" class="upload-cta" disabled>
+          <span class="upload-icon">↑</span>
+          <span>Upload Project Folder</span>
+        </button>
+        <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden">
+        <input type="file" id="files-input" multiple class="hidden">
+        <button id="fallback-files-btn" class="btn-link small hidden">Folder upload not supported — select files instead</button>
+
+        <div class="card" id="last-commit-card" style="display:none">
+          <div class="card-title">Last Commit</div>
+          <div id="last-commit-message" class="commit-msg">—</div>
+          <div id="last-commit-meta" class="commit-meta">—</div>
+        </div>
+      </section>
+
+      <!-- ============ UPLOAD PROGRESS VIEW ============ -->
+      <section id="view-progress" class="view">
+        <div class="card center-card">
+          <div id="progress-label" class="progress-label">Reading project…</div>
+          <div class="progress-track"><div id="progress-bar" class="progress-fill" style="width:0%"></div></div>
+          <div id="progress-percent" class="progress-percent">0%</div>
+          <div id="progress-detail" class="progress-detail"></div>
+        </div>
+      </section>
+
+      <!-- ============ COMPARE VIEW ============ -->
+      <section id="view-compare" class="view">
+        <div class="card">
+          <div class="summary-title">Changes detected</div>
+          <div class="summary-counts">
+            <span class="count added" id="count-added">+0 Added</span>
+            <span class="count modified" id="count-modified">~0 Modified</span>
+            <span class="count deleted" id="count-deleted">-0 Deleted</span>
+            <span class="count unchanged" id="count-unchanged">=0 Unchanged</span>
+          </div>
+        </div>
+
+        <div class="filter-row">
+          <div class="chip-group" id="filter-chips">
+            <button class="chip active" data-filter="all">All</button>
+            <button class="chip" data-filter="added">Added</button>
+            <button class="chip" data-filter="modified">Modified</button>
+            <button class="chip" data-filter="deleted">Deleted</button>
+          </div>
+          <input type="text" id="file-search" placeholder="Search changed files…">
+        </div>
+
+        <div id="deletions-warning" class="card warning-card hidden">
+          <div class="card-title">Files that will be deleted</div>
+          <div id="deletions-list"></div>
+          <label class="checkbox-row">
+            <input type="checkbox" id="confirm-deletions">
+            <span>I confirm these files should be removed from the repository</span>
+          </label>
+        </div>
+
+        <div id="file-list" class="file-list"></div>
+
+        <div class="sticky-action">
+          <button id="review-continue-btn" class="btn btn-primary btn-block">Review & Commit</button>
+        </div>
+      </section>
+
+      <!-- ============ COMMIT VIEW ============ -->
+      <section id="view-commit" class="view">
+        <div class="card">
+          <div class="summary-title">Review Changes</div>
+          <div id="commit-file-count" class="commit-file-count">0 files changed</div>
+          <div class="summary-counts">
+            <span class="count added" id="commit-count-added">0 Added</span>
+            <span class="count modified" id="commit-count-modified">0 Modified</span>
+            <span class="count deleted" id="commit-count-deleted">0 Deleted</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <label class="field-label">Commit message</label>
+          <input type="text" id="commit-message" placeholder="Describe your changes">
+        </div>
+
+        <p id="commit-error" class="error-text hidden"></p>
+
+        <div class="sticky-action two-btn">
+          <button id="cancel-commit-btn" class="btn btn-secondary">Cancel</button>
+          <button id="commit-btn" class="btn btn-primary">Commit Everything</button>
+        </div>
+      </section>
+
+      <!-- ============ SUCCESS VIEW ============ -->
+      <section id="view-success" class="view">
+        <div class="card center-card">
+          <div class="success-check">✓</div>
+          <div class="success-title">Successfully pushed</div>
+          <div id="success-message" class="commit-msg">—</div>
+          <div id="success-file-count" class="commit-meta">—</div>
+          <div class="sha-row">Commit: <code id="success-sha">—</code></div>
+          <a id="view-on-github-btn" class="btn btn-secondary btn-block" href="#" target="_blank" rel="noopener">View on GitHub</a>
+          <button id="back-to-dashboard-btn" class="btn btn-primary btn-block">Back to Dashboard</button>
+        </div>
+      </section>
+
+      <!-- ============ CONFLICT VIEW ============ -->
+      <section id="view-conflict" class="view">
+        <div class="card center-card">
+          <div class="conflict-icon">⚠</div>
+          <div class="success-title">Repository changed</div>
+          <p>Someone pushed new changes to this branch while you were preparing your upload.</p>
+          <p>Refresh the repository and compare the files again.</p>
+          <button id="conflict-back-btn" class="btn btn-primary btn-block">Back to Dashboard</button>
+        </div>
+      </section>
+
+      <!-- ============ SETTINGS VIEW ============ -->
+      <section id="view-settings" class="view">
+        <div class="card">
+          <div class="card-title">GitHub Account</div>
+          <div class="connected-row">
+            <span class="dot dot-green"></span>
+            <span id="settings-username">Connected account</span>
+          </div>
+          <button id="settings-disconnect-btn" class="btn btn-secondary btn-block">Disconnect GitHub</button>
+        </div>
+
+        <div class="card">
+          <label class="field-label">Default Repository</label>
+          <div id="settings-default-repo" class="static-value">—</div>
+
+          <label class="field-label">Default Branch</label>
+          <div id="settings-default-branch" class="static-value">—</div>
+
+          <label class="field-label">Sync Mode</label>
+          <div class="radio-row">
+            <label><input type="radio" name="settings-sync-mode" value="repo"> Entire repository</label>
+            <label><input type="radio" name="settings-sync-mode" value="folder"> Selected folder only</label>
+          </div>
+
+          <label class="field-label">Theme</label>
+          <div class="static-value">Dark</div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Diff modal (full-screen sheet on mobile) -->
+<div id="diff-modal" class="modal hidden">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <span id="diff-modal-title">Diff</span>
+      <button id="diff-modal-close" class="icon-btn">✕</button>
+    </div>
+    <div id="diff-modal-body" class="modal-body"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/auth.js"></script>
+<script src="js/github.js"></script>
+<script src="js/files.js"></script>
+<script src="js/compare.js"></script>
+<script src="js/commit.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
