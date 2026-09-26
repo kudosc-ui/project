@@ -90,6 +90,11 @@ input[type="text"]:focus,input[type="password"]:focus,select:focus{
 .btn-primary:hover:not(:disabled){background:#3d7ae0;}
 .btn-secondary{background:var(--surface-2); color:var(--text); border-color:var(--border);}
 .btn-secondary:hover{background:#1d222c;}
+.btn-danger{background:var(--red); color:#fff;}
+.btn-danger:hover:not(:disabled){background:#e04b4b;}
+.btn-danger:disabled{opacity:.35;}
+.danger-outline{color:var(--red) !important; border-color:rgba(245,101,101,.4) !important;}
+.danger-text{color:var(--red) !important;}
 .btn-link{background:none; border:none; color:var(--accent); font-size:13px; cursor:pointer; padding:6px 0;}
 .btn-link.small{font-size:12.5px; padding:2px 0;}
 .icon-btn{
@@ -103,30 +108,40 @@ input[type="text"]:focus,input[type="password"]:focus,select:focus{
 /* ---------- App shell ---------- */
 #app-shell{min-height:100vh;}
 
-/* ---------- Page tabs (Home / Custom) ---------- */
-.page-tabs{
-  display:flex; gap:4px; padding:8px 16px;
-  background:var(--surface); border-bottom:1px solid var(--border);
-  position:sticky; top:53px; z-index:9;
+/* ---------- Navbar (professional, shared by both pages) ---------- */
+.navbar{
+  display:flex; align-items:center; gap:20px;
+  padding:12px 20px;
+  background:linear-gradient(180deg, var(--surface) 0%, var(--surface) 100%);
+  border-bottom:1px solid var(--border);
+  position:sticky; top:0; z-index:10;
 }
-.page-tab{
-  background:none; border:none; color:var(--text-dim);
-  padding:8px 16px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;
+.navbar-brand{
+  display:flex; align-items:center; gap:9px;
+  font-weight:700; font-size:16px; letter-spacing:-.01em; white-space:nowrap;
 }
-.page-tab:hover{background:var(--surface-2); color:var(--text);}
-.page-tab.active{background:var(--accent-dim); color:#cfe0ff;}
-.page{display:none;}
-.page.active{display:block;}
-.custom-content{max-width:760px; margin:0 auto; padding:16px; padding-bottom:60px;}
-@media (min-width:860px){ .custom-content{padding:28px 32px;} }
-.hint-inline{color:var(--text-dim); font-weight:400; text-transform:none; letter-spacing:0; font-size:11.5px;}
-.topbar{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:12px 16px; border-bottom:1px solid var(--border);
-  background:var(--surface); position:sticky; top:0; z-index:10;
+.logo-badge{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:26px; height:26px; border-radius:7px; font-size:14px;
+  background:linear-gradient(135deg, var(--accent) 0%, #7c5cff 100%);
+  color:#fff; box-shadow:0 2px 8px rgba(79,140,255,.35);
 }
-.brand{font-weight:600; font-size:16px;}
-.layout{display:flex; min-height:calc(100vh - 53px);}
+.navbar-links{
+  display:flex; gap:2px; background:var(--surface-2);
+  padding:3px; border-radius:9px; border:1px solid var(--border);
+}
+.navbar-link{
+  padding:6px 16px; border-radius:7px; font-size:13.5px; font-weight:600;
+  color:var(--text-dim); text-decoration:none; transition:color .12s, background .12s;
+}
+.navbar-link:hover{color:var(--text);}
+.navbar-link.active{background:var(--accent); color:#fff; box-shadow:0 1px 4px rgba(79,140,255,.4);}
+.navbar .icon-btn{margin-left:auto;}
+@media (min-width:860px){
+  .navbar{padding:14px 32px;}
+}
+.topbar{display:none;} /* superseded by .navbar; kept as a no-op in case of stray markup */
+.layout{display:flex; min-height:calc(100vh - 61px);}
 .sidebar{
   display:none;
   flex-direction:column; width:200px; padding:16px 10px;
@@ -140,6 +155,9 @@ input[type="text"]:focus,input[type="password"]:focus,select:focus{
 .nav-item:hover{background:var(--surface-2); color:var(--text);}
 .nav-item.active{background:var(--surface-2); color:var(--text); font-weight:600;}
 .content{flex:1; padding:16px; max-width:760px; margin:0 auto; width:100%; padding-bottom:100px;}
+.custom-content{max-width:760px; margin:0 auto; padding:16px; padding-bottom:60px;}
+@media (min-width:860px){ .custom-content{padding:28px 32px;} }
+.hint-inline{color:var(--text-dim); font-weight:400; text-transform:none; letter-spacing:0; font-size:11.5px;}
 
 /* ---------- Cards ---------- */
 .card{
@@ -292,6 +310,33 @@ input[type="text"]:focus,input[type="password"]:focus,select:focus{
 }
 .visibility-badge.public{color:var(--green);}
 .visibility-badge.private{color:var(--yellow);}
+
+/* ---------- Account switcher ---------- */
+.account-row{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 0; border-bottom:1px solid var(--border);
+}
+.account-row:last-of-type{border-bottom:none;}
+.account-avatar{
+  width:30px; height:30px; border-radius:50%; object-fit:cover; flex-shrink:0;
+  border:1px solid var(--border);
+}
+.account-avatar-fallback{
+  display:flex; align-items:center; justify-content:center;
+  background:var(--accent-dim); color:#cfe0ff; font-weight:700; font-size:13px;
+}
+.account-login{flex:1; font-size:14px; font-weight:600; overflow-wrap:anywhere;}
+.account-badge{
+  font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+  background:rgba(62,207,142,.15); color:var(--green);
+}
+.account-remove-btn{color:var(--red) !important;}
+.add-account-row{display:flex; gap:8px; margin-top:14px;}
+.add-account-row input{flex:1;}
+@media (max-width:480px){ .add-account-row{flex-direction:column;} }
+
+/* ---------- Small modal variant (confirmations, delete-repo, accounts) ---------- */
+.small-sheet{max-width:420px;}
 .diff-line{
   font-family:"SF Mono",Consolas,Menlo,monospace; font-size:12.5px;
   white-space:pre-wrap; word-break:break-word; padding:2px 16px;

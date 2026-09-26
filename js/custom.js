@@ -1,12 +1,11 @@
 /**
  * custom.js
- * Everything behind the "Custom" tab: creating a new repository (optionally
- * seeded from a ZIP), enabling GitHub Pages hosting, and browsing/editing/
- * deleting individual files in any of the user's existing repositories.
- *
- * This is intentionally a separate module from app.js's Home-page flow —
- * it uses the same Auth/GitHub/Files/ZipHandler/Compare/Commit building
- * blocks but keeps its own small piece of state.
+ * Drives the standalone Custom page (custom.html): creating a new
+ * repository (optionally seeded from a ZIP), enabling GitHub Pages hosting,
+ * and browsing/editing/deleting individual files in any existing
+ * repository. Uses the same Auth/GitHub/Files/ZipHandler/Compare/Commit
+ * building blocks as the Home page, plus AccountsUI for the account
+ * switcher modal.
  */
 
 (() => {
@@ -54,20 +53,18 @@
   const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico']);
   const HTML_EXT = new Set(['html', 'htm']);
 
-  // ---------------- Page tab switching ----------------
+  // ---------------- Entry: connected vs not-connected ----------------
 
-  function switchPage(pageKey) {
-    document.querySelectorAll('.page-tab').forEach(t => t.classList.toggle('active', t.dataset.page === pageKey));
-    document.getElementById('page-home').classList.toggle('active', pageKey === 'home');
-    document.getElementById('page-custom').classList.toggle('active', pageKey === 'custom');
-    if (pageKey === 'custom') {
-      if (!Auth.getToken()) {
-        UI.toast('Connect to GitHub on the Home page first.');
-        switchPage('home');
-        return;
-      }
-      if (!state.repos.length) loadRepoList();
+  function boot() {
+    const token = Auth.getToken();
+    if (!token) {
+      document.getElementById('custom-not-connected').classList.remove('hidden');
+      return;
     }
+    document.getElementById('custom-connected').classList.remove('hidden');
+    const account = Auth.getActiveAccount();
+    document.getElementById('custom-username-label').textContent = account ? account.login : '…';
+    loadRepoList();
   }
 
   // ---------------- Repository list ----------------
@@ -272,7 +269,7 @@
       UI.toast(friendlyError(e));
     }
 
-    document.getElementById('delete-repo-btn').onclick = () => handleDeleteRepo(owner, repo);
+    document.getElementById('delete-repo-btn').onclick = () => openDeleteRepoModal(owner, repo);
   }
 
   function renderRepoFileList() {
@@ -295,7 +292,7 @@
         <div class="repo-row-actions">
           <button class="btn-link small" data-action="view">View</button>
           <button class="btn-link small" data-action="edit">Edit</button>
-          <button class="btn-link small" data-action="delete" style="color:var(--red)">Delete</button>
+          <button class="btn-link small danger-text" data-action="delete">Delete</button>
         </div>
       `;
       row.querySelector('[data-action="view"]').addEventListener('click', () => openFile(path, 'view'));
@@ -381,7 +378,8 @@
   }
 
   async function handleDeleteFile(path) {
-    if (!confirm(`Delete "${path}" from this repository? This cannot be undone here.`)) return;
+    const ok = await UI.confirm(`Delete "${path}" from this repository? This cannot be undone.`, 'Delete file');
+    if (!ok) return;
     const { owner, repoName, branch } = state.browsing;
     try {
       const fileData = await GitHub.getContents(owner, repoName, path, branch);
@@ -394,27 +392,49 @@
     }
   }
 
-  async function handleDeleteRepo(owner, repoName) {
-    if (!confirm(`Permanently delete "${owner}/${repoName}"? This cannot be undone.`)) return;
-    if (!confirm('Really sure? Type-to-confirm isn\'t available here — this is your final confirmation.')) return;
-    try {
-      await GitHub.deleteRepo(owner, repoName);
-      document.getElementById('repo-browser-card').classList.add('hidden');
-      state.browsing = null;
-      state.repos = [];
-      loadRepoList();
-      UI.toast('Repository deleted.');
-    } catch (e) {
-      UI.toast(friendlyError(e));
-    }
+  // ---------------- Delete repository (type-to-confirm modal) ----------------
+
+  function openDeleteRepoModal(owner, repoName) {
+    const modal = document.getElementById('delete-repo-modal');
+    const fullName = `${owner}/${repoName}`;
+    document.getElementById('delete-repo-modal-name').textContent = fullName;
+    const input = document.getElementById('delete-repo-confirm-input');
+    const confirmBtn = document.getElementById('delete-repo-confirm-btn');
+    input.value = '';
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Delete Repository';
+    modal.classList.remove('hidden');
+    input.focus();
+
+    input.oninput = () => { confirmBtn.disabled = input.value.trim() !== repoName; };
+
+    confirmBtn.onclick = async () => {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Deleting…';
+      try {
+        await GitHub.deleteRepo(owner, repoName);
+        modal.classList.add('hidden');
+        document.getElementById('repo-browser-card').classList.add('hidden');
+        state.browsing = null;
+        state.repos = [];
+        loadRepoList();
+        UI.toast('Repository deleted.');
+      } catch (e) {
+        UI.toast(friendlyError(e));
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Delete Repository';
+      }
+    };
+
+    const close = () => modal.classList.add('hidden');
+    document.getElementById('delete-repo-cancel-btn').onclick = close;
+    document.getElementById('delete-repo-modal-close').onclick = close;
   }
 
   // ---------------- Wiring ----------------
 
   function init() {
-    document.querySelectorAll('.page-tab').forEach(tab => {
-      tab.addEventListener('click', () => switchPage(tab.dataset.page));
-    });
+    boot();
 
     document.getElementById('create-repo-btn').addEventListener('click', handleCreateRepo);
     document.getElementById('custom-repo-search').addEventListener('input', renderRepoList);
@@ -431,6 +451,17 @@
     });
     document.getElementById('file-editor-modal').addEventListener('click', (e) => {
       if (e.target.id === 'file-editor-modal') document.getElementById('file-editor-modal').classList.add('hidden');
+    });
+
+    const accountsToggle = document.getElementById('accounts-toggle');
+    const accountsModal = document.getElementById('accounts-modal');
+    accountsToggle.addEventListener('click', () => {
+      AccountsUI.render();
+      accountsModal.classList.remove('hidden');
+    });
+    document.getElementById('accounts-modal-close').addEventListener('click', () => accountsModal.classList.add('hidden'));
+    accountsModal.addEventListener('click', (e) => {
+      if (e.target.id === 'accounts-modal') accountsModal.classList.add('hidden');
     });
   }
 

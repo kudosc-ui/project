@@ -45,6 +45,9 @@
     if (!token) return;
     try {
       const user = await Auth.validateToken(token);
+      // Keeps the saved account's login/avatar fresh, and migrates a
+      // legacy single-token session into the new account list.
+      Auth.upsertAccount(user.login, token, user.avatar_url);
       await enterApp(user);
     } catch (e) {
       Auth.clearToken();
@@ -53,7 +56,6 @@
 
   async function handleConnect() {
     const tokenInput = document.getElementById('pat-input');
-    const remember = document.getElementById('remember-token').checked;
     const errEl = document.getElementById('auth-error');
     const btn = document.getElementById('connect-btn');
     const token = tokenInput.value.trim();
@@ -69,7 +71,7 @@
     btn.textContent = 'Connecting…';
     try {
       const user = await Auth.validateToken(token);
-      Auth.saveToken(token, remember);
+      Auth.upsertAccount(user.login, token, user.avatar_url);
       await enterApp(user);
     } catch (e) {
       errEl.textContent = friendlyError(e) || e.message;
@@ -82,6 +84,12 @@
 
   function handleDisconnect() {
     Auth.clearToken();
+    // If another saved account became active, just carry on as that account
+    // instead of forcing a re-login.
+    if (Auth.getToken()) {
+      window.location.reload();
+      return;
+    }
     state.user = null;
     document.getElementById('app-shell').classList.add('hidden');
     document.getElementById('view-auth').classList.add('active');
@@ -93,7 +101,6 @@
     document.getElementById('view-auth').classList.remove('active');
     document.getElementById('app-shell').classList.remove('hidden');
     document.getElementById('username-label').textContent = user.login;
-    document.getElementById('settings-username').textContent = `Connected as @${user.login}`;
     UI.showView('view-dashboard');
 
     const repoSelect = document.getElementById('repo-select');
@@ -449,6 +456,7 @@
   }
 
   function populateSettings() {
+    if (window.AccountsUI) AccountsUI.render();
     document.getElementById('settings-default-repo').textContent = state.currentRepoFullName || '—';
     document.getElementById('settings-default-branch').textContent = state.currentBranch || '—';
     document.querySelectorAll('input[name="settings-sync-mode"]').forEach(r => {
@@ -470,7 +478,6 @@
       window.open('https://github.com/settings/tokens/new?scopes=repo&description=GitSync', '_blank', 'noopener');
     });
     document.getElementById('disconnect-btn').addEventListener('click', handleDisconnect);
-    document.getElementById('settings-disconnect-btn').addEventListener('click', handleDisconnect);
     document.getElementById('settings-toggle').addEventListener('click', () => {
       populateSettings();
       UI.showView('view-settings');

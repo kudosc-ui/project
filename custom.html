@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>GitSync — Custom</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app-shell">
+
+  <header class="navbar">
+    <div class="navbar-brand"><span class="logo-badge">⇄</span> GitSync</div>
+    <nav class="navbar-links">
+      <a href="index.html" class="navbar-link">Home</a>
+      <a href="custom.html" class="navbar-link active">Custom</a>
+    </nav>
+    <button id="accounts-toggle" class="icon-btn" title="Accounts">⚙️</button>
+  </header>
+
+  <!-- ============ NOT CONNECTED STATE ============ -->
+  <div id="custom-not-connected" class="hidden">
+    <div class="content custom-content">
+      <div class="card center-card">
+        <div class="conflict-icon">🔒</div>
+        <div class="success-title">Connect a GitHub account first</div>
+        <p class="hint">Head to the Home page to connect with a Personal Access Token, then come back here.</p>
+        <a href="index.html" class="btn btn-primary btn-block">Go to Home</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CUSTOM PAGE CONTENT ============ -->
+  <div id="custom-connected" class="hidden">
+    <div class="content custom-content">
+
+      <div class="card">
+        <div class="connected-row">
+          <span class="dot dot-green"></span>
+          <span>Connected as <strong id="custom-username-label">—</strong></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Create New Repository</div>
+        <label class="field-label" for="new-repo-name">Repository Name</label>
+        <input type="text" id="new-repo-name" placeholder="my-new-project" autocomplete="off">
+
+        <label class="field-label">Visibility</label>
+        <div class="radio-row">
+          <label><input type="radio" name="new-repo-visibility" value="public" checked> Public</label>
+          <label><input type="radio" name="new-repo-visibility" value="private"> Private</label>
+        </div>
+
+        <label class="field-label" for="new-repo-zip-input">Project ZIP <span class="hint-inline">(optional — extracted and pushed as the first commit)</span></label>
+        <input type="file" id="new-repo-zip-input" accept=".zip,application/zip">
+
+        <button id="create-repo-btn" class="btn btn-primary btn-block" style="margin-top:16px">Create Repository</button>
+        <p id="create-repo-error" class="error-text hidden"></p>
+      </div>
+
+      <div class="card center-card hidden" id="create-repo-progress-card">
+        <div id="create-repo-progress-label" class="progress-label">Creating repository…</div>
+        <div class="progress-track"><div id="create-repo-progress-bar" class="progress-fill" style="width:0%"></div></div>
+        <div id="create-repo-progress-percent" class="progress-percent">0%</div>
+        <div id="create-repo-progress-detail" class="progress-detail"></div>
+      </div>
+
+      <div class="card hidden" id="create-repo-success-card">
+        <div class="card-title">Repository Created</div>
+        <div id="create-repo-result-name" class="commit-msg">—</div>
+        <a id="create-repo-result-link" class="btn-link" href="#" target="_blank" rel="noopener">Open on GitHub ↗</a>
+        <button id="enable-pages-btn" class="btn btn-secondary btn-block hidden" style="margin-top:12px">Host with GitHub Pages</button>
+        <div id="pages-result-row" class="hidden" style="margin-top:10px">
+          <div class="field-label" style="margin-top:0">Live URL</div>
+          <a id="pages-result-link" class="static-value" href="#" target="_blank" rel="noopener">—</a>
+          <p class="hint">It can take a minute or two for GitHub Pages to finish deploying.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Your Repositories</div>
+        <input type="text" id="custom-repo-search" placeholder="Search repositories…">
+        <div id="custom-repo-list" class="file-list" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card hidden" id="repo-browser-card">
+        <div class="connected-row" style="margin-bottom:10px">
+          <span id="repo-browser-title" class="card-title" style="margin:0">Files</span>
+          <button id="repo-browser-close" class="btn-link small">Close</button>
+        </div>
+        <div id="repo-file-list" class="file-list"></div>
+        <button id="delete-repo-btn" class="btn btn-secondary btn-block danger-outline" style="margin-top:14px">Delete Repository</button>
+      </div>
+
+    </div>
+  </div><!-- /custom-connected -->
+
+</div><!-- /app-shell -->
+
+<!-- File viewer / editor modal -->
+<div id="file-editor-modal" class="modal hidden">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <span id="file-editor-title">File</span>
+      <button id="file-editor-close" class="icon-btn">✕</button>
+    </div>
+    <div id="file-editor-body" class="modal-body file-editor-body"></div>
+    <div id="file-editor-actions" class="modal-actions hidden">
+      <button id="file-editor-cancel" class="btn btn-secondary">Cancel</button>
+      <button id="file-editor-save" class="btn btn-primary">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete-repository modal: requires typing the repo name to confirm -->
+<div id="delete-repo-modal" class="modal hidden">
+  <div class="modal-sheet small-sheet">
+    <div class="modal-header">
+      <span>Delete Repository</span>
+      <button id="delete-repo-modal-close" class="icon-btn">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0 16px 16px">
+      <p>This will permanently delete <strong id="delete-repo-modal-name">—</strong> and everything in it. This action <strong>cannot be undone</strong>.</p>
+      <label class="field-label">Type the repository name to confirm</label>
+      <input type="text" id="delete-repo-confirm-input" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="modal-actions">
+      <button id="delete-repo-cancel-btn" class="btn btn-secondary">Cancel</button>
+      <button id="delete-repo-confirm-btn" class="btn btn-danger" disabled>Delete Repository</button>
+    </div>
+  </div>
+</div>
+
+<!-- Generic confirm modal (replaces window.confirm for a consistent look) -->
+<div id="confirm-modal" class="modal hidden">
+  <div class="modal-sheet small-sheet">
+    <div class="modal-header"><span id="confirm-modal-title">Are you sure?</span></div>
+    <div class="modal-body" style="padding:0 16px 16px"><p id="confirm-modal-message"></p></div>
+    <div class="modal-actions">
+      <button id="confirm-modal-cancel" class="btn btn-secondary">Cancel</button>
+      <button id="confirm-modal-ok" class="btn btn-danger">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Accounts modal (account switcher) -->
+<div id="accounts-modal" class="modal hidden">
+  <div class="modal-sheet small-sheet">
+    <div class="modal-header">
+      <span>Connected Accounts</span>
+      <button id="accounts-modal-close" class="icon-btn">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0 16px 16px">
+      <div id="accounts-list"></div>
+      <div class="add-account-row">
+        <input type="password" id="add-account-token" placeholder="Paste another GitHub token…" autocomplete="off">
+        <button id="add-account-btn" class="btn btn-secondary">Add Account</button>
+      </div>
+      <p id="add-account-error" class="error-text hidden"></p>
+      <p class="hint">Tokens are stored in this browser only, so you can switch accounts instantly.</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/github.js"></script>
+<script src="js/files.js"></script>
+<script src="js/zip.js"></script>
+<script src="js/compare.js"></script>
+<script src="js/commit.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/accounts.js"></script>
+<script src="js/custom.js"></script>
+</body>
+</html>

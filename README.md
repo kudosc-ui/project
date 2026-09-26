@@ -26,7 +26,7 @@ Then open `http://localhost:8080` in your browser. You can also upload this
 folder to any static host (GitHub Pages, Netlify, Vercel, a personal VPS) —
 it needs nothing beyond serving the files as-is.
 
-## 2. Authentication
+## 2. Authentication & multiple accounts
 
 GitSync has no backend, and a real "Login with GitHub" OAuth flow requires a
 **client secret**, which can never be safely stored in frontend JavaScript —
@@ -37,29 +37,29 @@ Access Token (PAT)**.
 **To create one:**
 
 1. Go to **github.com → Settings → Developer settings → Personal access
-   tokens → Fine-grained tokens** (or use the "How do I get a token?" link
-   on the login screen, which opens a pre-filled classic-token page).
-2. Give it a name like `GitSync`, an expiration you're comfortable with, and
-   grant it access to the repositories you want to sync.
-3. Under permissions, grant **Contents: Read and write** (classic tokens:
-   check the `repo` scope).
-4. Copy the generated token and paste it into GitSync's login screen.
+   tokens → Tokens (classic)** (or use the "How do I get a token?" link on
+   the login screen, which opens a pre-filled token page).
+2. Click **Generate new token (classic)**, give it a name like `GitSync`
+   and an expiration you're comfortable with.
+3. Check the **repo** scope only — nothing else is needed.
+4. Generate it, copy it, and paste it into GitSync's login screen.
 
-**Where the token lives:**
+**Switching between multiple GitHub accounts:** GitSync supports saving more
+than one account and switching between them instantly, from the gear icon
+in the navbar (Settings on Home, "Accounts" modal on Custom):
 
-- By default it's kept in `sessionStorage` — it disappears when you close the
-  tab/browser. Nothing is written to disk.
-- If you check **"Remember this token on this device"**, it's saved in
-  `localStorage` instead, so you won't have to re-paste it every time. This
-  is a convenience/security tradeoff: anyone with access to that browser
-  profile could read it. Only enable it on a device you trust.
-- The token is sent **only** in requests to `https://api.github.com`. It is
-  never logged, never sent anywhere else, and never appears in the page's
-  HTML/JS source.
+- **Add Account** — paste another token to save a second (or third...)
+  account alongside the current one.
+- **Switch** — makes a saved account active; the page reloads using that
+  account's token for every GitHub request from then on.
+- **Remove** — deletes a saved account's token from this browser, with a
+  confirmation prompt first.
 
-You can revoke the token any time from GitHub's settings page, and disconnect
-from within the app (Dashboard → Disconnect, or Settings → Disconnect
-GitHub).
+**Where tokens live:** saved accounts are kept in this browser's
+`localStorage` so switching between them survives closing and reopening the
+browser. This is the tradeoff that makes a multi-account switcher useful —
+tokens are never sent anywhere except `https://api.github.com`, and you can
+remove any saved account at any time from the Accounts UI.
 
 ## 3. Two ways to upload: a folder, or a ZIP file
 
@@ -169,8 +169,9 @@ forward update as a last line of defense.
 - No client secret, ever — this app has no OAuth app registration.
 - Your token is never hard-coded, logged, or transmitted anywhere except
   `api.github.com`.
-- Token storage defaults to session-only; persistent storage is opt-in and
-  clearly labeled.
+- Token storage is per-account in `localStorage`, so multiple accounts can
+  be switched between; remove any saved account any time from the Accounts
+  UI (gear icon in the navbar).
 - Uploaded file paths are validated to block path traversal (`../`) and
   absolute paths before they're ever considered for comparison or commit.
 - Large uploads are capped (25 MB per file, 5000 files per folder) to avoid
@@ -183,7 +184,26 @@ forward update as a last line of defense.
   client-side. It never touches your GitHub token or makes any network
   requests of its own.
 
-## 9. The Custom page
+## 9. Two real pages, one navbar
+
+GitSync is now two separate HTML documents that share the same navbar,
+styling, and JavaScript modules:
+
+- **`index.html`** — Home: the folder/ZIP sync dashboard described above.
+- **`custom.html`** — Custom: repository creation, GitHub Pages hosting, and
+  the file browser/editor.
+
+The navbar (top of both pages) links between them and hosts the Accounts
+gear icon. Because they're real pages rather than a single-page app,
+navigating between Home and Custom is a normal page load — your GitHub
+login carries over automatically (it's read from `localStorage`), but
+in-progress state like an unfinished upload or diff does not; finish a sync
+on Home before switching to Custom, and vice versa.
+
+If you haven't connected any account yet, Custom shows a prompt pointing
+you back to Home to connect first.
+
+## 10. The Custom page
 
 Alongside the Home dashboard (folder/ZIP sync into an existing repo), a
 **Home / Custom** tab bar at the top switches to a second page for
@@ -213,22 +233,27 @@ repository-level management:
     batch-sync commits).
   - **Delete** — removes the file with a confirmation prompt.
   - A **Delete Repository** button is also available at the bottom of the
-    file browser, with two confirmation prompts, since it's irreversible.
+    file browser. Deleting a repository requires typing its exact name into
+    a confirmation dialog before the button becomes clickable — the same
+    safeguard GitHub itself uses — so it can't happen by an accidental tap
+    or a stray click.
 
-## 10. Project structure
+## 11. Project structure
 
 ```
-index.html
+index.html     # Home page
+custom.html    # Custom page
 style.css
 js/
-  app.js       # state + event wiring
-  auth.js      # token storage & validation
+  app.js       # Home page: state + event wiring
+  auth.js      # multi-account token storage & validation
+  accounts.js  # account-switcher UI (shared by both pages)
   github.js    # GitHub REST/Git Data API wrapper
   files.js     # local folder reading, hashing, path safety
   compare.js   # local-vs-remote diffing, line diff
   commit.js    # blob -> tree -> commit -> ref orchestration
   zip.js       # client-side ZIP extraction (uses JSZip)
-  ui.js        # DOM rendering helpers
+  ui.js        # DOM rendering helpers, shared confirm() modal
   custom.js    # Custom page: repo creation, Pages hosting, file browser/editor
 README.md
 ```

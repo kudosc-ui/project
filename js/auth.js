@@ -1,52 +1,102 @@
 /**
  * auth.js
- * Handles the GitHub Personal Access Token lifecycle.
+ * Handles GitHub Personal Access Tokens for one or more saved accounts, so
+ * the person can switch between them without re-pasting a token each time.
  *
- * GitSync is a purely client-side, personal-use app. There is no backend to
- * broker a real OAuth "Authorization Code" flow (that requires a client
- * secret, which can never live safely in frontend code). Instead we use a
- * user-supplied Personal Access Token (PAT / fine-grained token), which is
- * GitHub's own recommended approach for personal scripts and tools.
- *
- * Storage:
- *  - Default: sessionStorage (cleared when the browser tab/window closes).
- *  - Opt-in: localStorage, only if the user explicitly checks "Remember on
- *    this device". This is clearly a tradeoff and is presented as such.
- *  - The token is never written to disk, logged to the console, or sent to
- *    any endpoint other than https://api.github.com.
+ * Storage: accounts (login, token, avatarUrl) are kept in localStorage as a
+ * small JSON array, plus a pointer to which one is "active". This is a
+ * deliberate tradeoff for the multi-account switcher to be genuinely
+ * useful across browser sessions — each account can be removed individually
+ * at any time from the Accounts UI, and nothing is ever sent anywhere
+ * except https://api.github.com.
  */
 
 const Auth = (() => {
-  const SESSION_KEY = 'gitsync_token';
-  const LOCAL_KEY = 'gitsync_token_persist';
-  const REMEMBER_KEY = 'gitsync_remember';
+  const ACCOUNTS_KEY = 'gitsync_accounts';
+  const ACTIVE_KEY = 'gitsync_active_login';
 
-  function saveToken(token, remember) {
-    // Always clear both first so we never keep stale copies in two places.
-    sessionStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(LOCAL_KEY);
+  // Superseded single-token keys from earlier versions of GitSync, migrated
+  // automatically into the accounts list on first load.
+  const LEGACY_SESSION_KEY = 'gitsync_token';
+  const LEGACY_LOCAL_KEY = 'gitsync_token_persist';
 
-    if (remember) {
-      localStorage.setItem(LOCAL_KEY, token);
-      localStorage.setItem(REMEMBER_KEY, '1');
-    } else {
-      sessionStorage.setItem(SESSION_KEY, token);
-      localStorage.removeItem(REMEMBER_KEY);
+  function loadAccounts() {
+    try {
+      const raw = localStorage.getItem(ACCOUNTS_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
     }
   }
 
+  function saveAccounts(accounts) {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+  }
+
+  function getAccounts() {
+    return loadAccounts();
+  }
+
+  function getActiveLogin() {
+    return localStorage.getItem(ACTIVE_KEY);
+  }
+
+  function getActiveAccount() {
+    const login = getActiveLogin();
+    if (!login) return null;
+    return loadAccounts().find(a => a.login === login) || null;
+  }
+
+  /** Returns a legacy pre-multi-account token if one exists and hasn't been migrated yet. */
+  function legacyToken() {
+    return sessionStorage.getItem(LEGACY_SESSION_KEY) || localStorage.getItem(LEGACY_LOCAL_KEY) || null;
+  }
+
   function getToken() {
-    return sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(LOCAL_KEY) || null;
+    const active = getActiveAccount();
+    if (active) return active.token;
+    return legacyToken();
   }
 
+  /** Adds a new account or updates an existing one (matched by login), and makes it active. */
+  function upsertAccount(login, token, avatarUrl) {
+    const accounts = loadAccounts();
+    const idx = accounts.findIndex(a => a.login === login);
+    const entry = { login, token, avatarUrl: avatarUrl || null };
+    if (idx >= 0) accounts[idx] = entry; else accounts.push(entry);
+    saveAccounts(accounts);
+    localStorage.setItem(ACTIVE_KEY, login);
+    // The account list is now the single source of truth for this login.
+    sessionStorage.removeItem(LEGACY_SESSION_KEY);
+    localStorage.removeItem(LEGACY_LOCAL_KEY);
+  }
+
+  function setActiveAccount(login) {
+    localStorage.setItem(ACTIVE_KEY, login);
+  }
+
+  function removeAccount(login) {
+    const accounts = loadAccounts().filter(a => a.login !== login);
+    saveAccounts(accounts);
+    if (getActiveLogin() === login) {
+      if (accounts.length) {
+        localStorage.setItem(ACTIVE_KEY, accounts[0].login);
+      } else {
+        localStorage.removeItem(ACTIVE_KEY);
+      }
+    }
+  }
+
+  /** "Disconnect" — removes whichever account is currently active. */
   function clearToken() {
-    sessionStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(LOCAL_KEY);
-    localStorage.removeItem(REMEMBER_KEY);
-  }
-
-  function isRemembered() {
-    return localStorage.getItem(REMEMBER_KEY) === '1';
+    const login = getActiveLogin();
+    if (login) {
+      removeAccount(login);
+    } else {
+      sessionStorage.removeItem(LEGACY_SESSION_KEY);
+      localStorage.removeItem(LEGACY_LOCAL_KEY);
+    }
   }
 
   /**
@@ -75,5 +125,9 @@ const Auth = (() => {
     return response.json();
   }
 
-  return { saveToken, getToken, clearToken, isRemembered, validateToken };
+  return {
+    getAccounts, getActiveLogin, getActiveAccount, getToken,
+    upsertAccount, setActiveAccount, removeAccount, clearToken,
+    validateToken
+  };
 })();

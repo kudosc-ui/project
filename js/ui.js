@@ -25,6 +25,25 @@ const UI = (() => {
     el._timer = setTimeout(() => el.classList.add('hidden'), ms);
   }
 
+  /**
+   * Styled replacement for window.confirm(). Returns a Promise<boolean>.
+   * Requires #confirm-modal markup to be present in the page.
+   */
+  function confirm(message, title = 'Are you sure?') {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('confirm-modal');
+      if (!modal) { resolve(window.confirm(message)); return; }
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-message').textContent = message;
+      modal.classList.remove('hidden');
+      const okBtn = document.getElementById('confirm-modal-ok');
+      const cancelBtn = document.getElementById('confirm-modal-cancel');
+      const finish = (result) => { modal.classList.add('hidden'); resolve(result); };
+      okBtn.onclick = () => finish(true);
+      cancelBtn.onclick = () => finish(false);
+    });
+  }
+
   function setProgress(percent, label, detail) {
     document.getElementById('progress-bar').style.width = `${percent}%`;
     document.getElementById('progress-percent').textContent = `${percent}%`;
@@ -173,8 +192,7 @@ const UI = (() => {
     return window.CSS && CSS.escape ? CSS.escape(s) : s.replace(/["\\]/g, '\\$&');
   }
 
-  function renderSyncSummary(successCount, failedCount) {
-    document.getElementById('results-count-success').textContent = `${successCount} Succeeded`;
+  function renderSyncSummary(successCount, failedCount) {    document.getElementById('results-count-success').textContent = `${successCount} Succeeded`;
     document.getElementById('results-count-failed').textContent = `${failedCount} Failed`;
     const banner = document.getElementById('sync-results-banner');
     const retryBtn = document.getElementById('results-retry-btn');
@@ -207,7 +225,7 @@ const UI = (() => {
   }
 
   return {
-    showView, setNavActive, toast, setProgress,
+    showView, setNavActive, toast, confirm, setProgress,
     renderRepoOptions, renderBranchOptions, renderLastCommit,
     renderSummaryCounts, renderDeletionsWarning, renderFileList,
     openDiffModal, closeDiffModal, renderDiffOps, escapeHtml,
