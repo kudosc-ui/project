@@ -102,6 +102,24 @@ input[type="text"]:focus,input[type="password"]:focus,select:focus{
 
 /* ---------- App shell ---------- */
 #app-shell{min-height:100vh;}
+
+/* ---------- Page tabs (Home / Custom) ---------- */
+.page-tabs{
+  display:flex; gap:4px; padding:8px 16px;
+  background:var(--surface); border-bottom:1px solid var(--border);
+  position:sticky; top:53px; z-index:9;
+}
+.page-tab{
+  background:none; border:none; color:var(--text-dim);
+  padding:8px 16px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;
+}
+.page-tab:hover{background:var(--surface-2); color:var(--text);}
+.page-tab.active{background:var(--accent-dim); color:#cfe0ff;}
+.page{display:none;}
+.page.active{display:block;}
+.custom-content{max-width:760px; margin:0 auto; padding:16px; padding-bottom:60px;}
+@media (min-width:860px){ .custom-content{padding:28px 32px;} }
+.hint-inline{color:var(--text-dim); font-weight:400; text-transform:none; letter-spacing:0; font-size:11.5px;}
 .topbar{
   display:flex; align-items:center; justify-content:space-between;
   padding:12px 16px; border-bottom:1px solid var(--border);
@@ -252,6 +270,28 @@ input[type="text"]:focus,input[type="password"]:focus,select:focus{
   padding:14px 16px; border-bottom:1px solid var(--border); font-weight:600;
 }
 .modal-body{overflow-y:auto; padding:10px 0;}
+.file-editor-body{padding:0 16px; flex:1;}
+.file-editor-body textarea{
+  width:100%; min-height:320px; background:var(--surface-2); color:var(--text);
+  border:1px solid var(--border); border-radius:8px; padding:12px;
+  font-family:"SF Mono",Consolas,Menlo,monospace; font-size:13px; resize:vertical;
+}
+.file-editor-body img{max-width:100%; border-radius:8px; display:block; margin:8px auto;}
+.file-editor-body iframe{width:100%; height:400px; border:1px solid var(--border); border-radius:8px; background:#fff;}
+.modal-actions{
+  display:flex; gap:10px; padding:14px 16px;
+  border-top:1px solid var(--border);
+  padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));
+}
+.modal-actions .btn{flex:1;}
+.repo-row-actions{display:flex; gap:14px; margin-top:8px; flex-wrap:wrap;}
+.repo-row-actions .btn-link{padding:0;}
+.visibility-badge{
+  font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:5px;
+  background:var(--surface-2); color:var(--text-dim); margin-left:6px;
+}
+.visibility-badge.public{color:var(--green);}
+.visibility-badge.private{color:var(--yellow);}
 .diff-line{
   font-family:"SF Mono",Consolas,Menlo,monospace; font-size:12.5px;
   white-space:pre-wrap; word-break:break-word; padding:2px 16px;

@@ -37,6 +37,12 @@
     <button id="settings-toggle" class="icon-btn" title="Settings">⚙️</button>
   </header>
 
+  <nav class="page-tabs">
+    <button class="page-tab active" data-page="home">Home</button>
+    <button class="page-tab" data-page="custom">Custom</button>
+  </nav>
+
+  <div id="page-home" class="page active">
   <div class="layout">
     <nav class="sidebar">
       <button class="nav-item active" data-nav="dashboard">Dashboard</button>
@@ -253,7 +259,67 @@
 
     </main>
   </div>
-</div>
+  </div><!-- /page-home -->
+
+  <!-- ============ CUSTOM PAGE ============ -->
+  <div id="page-custom" class="page">
+    <div class="content custom-content">
+
+      <div class="card">
+        <div class="card-title">Create New Repository</div>
+        <label class="field-label" for="new-repo-name">Repository Name</label>
+        <input type="text" id="new-repo-name" placeholder="my-new-project" autocomplete="off">
+
+        <label class="field-label">Visibility</label>
+        <div class="radio-row">
+          <label><input type="radio" name="new-repo-visibility" value="public" checked> Public</label>
+          <label><input type="radio" name="new-repo-visibility" value="private"> Private</label>
+        </div>
+
+        <label class="field-label" for="new-repo-zip-input">Project ZIP <span class="hint-inline">(optional — extracted and pushed as the first commit)</span></label>
+        <input type="file" id="new-repo-zip-input" accept=".zip,application/zip">
+
+        <button id="create-repo-btn" class="btn btn-primary btn-block" style="margin-top:16px">Create Repository</button>
+        <p id="create-repo-error" class="error-text hidden"></p>
+      </div>
+
+      <div class="card center-card hidden" id="create-repo-progress-card">
+        <div id="create-repo-progress-label" class="progress-label">Creating repository…</div>
+        <div class="progress-track"><div id="create-repo-progress-bar" class="progress-fill" style="width:0%"></div></div>
+        <div id="create-repo-progress-percent" class="progress-percent">0%</div>
+        <div id="create-repo-progress-detail" class="progress-detail"></div>
+      </div>
+
+      <div class="card hidden" id="create-repo-success-card">
+        <div class="card-title">Repository Created</div>
+        <div id="create-repo-result-name" class="commit-msg">—</div>
+        <a id="create-repo-result-link" class="btn-link" href="#" target="_blank" rel="noopener">Open on GitHub ↗</a>
+        <button id="enable-pages-btn" class="btn btn-secondary btn-block hidden" style="margin-top:12px">Host with GitHub Pages</button>
+        <div id="pages-result-row" class="hidden" style="margin-top:10px">
+          <div class="field-label" style="margin-top:0">Live URL</div>
+          <a id="pages-result-link" class="static-value" href="#" target="_blank" rel="noopener">—</a>
+          <p class="hint">It can take a minute or two for GitHub Pages to finish deploying.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Your Repositories</div>
+        <input type="text" id="custom-repo-search" placeholder="Search repositories…">
+        <div id="custom-repo-list" class="file-list" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card hidden" id="repo-browser-card">
+        <div class="connected-row" style="margin-bottom:10px">
+          <span id="repo-browser-title" class="card-title" style="margin:0">Files</span>
+          <button id="repo-browser-close" class="btn-link small">Close</button>
+        </div>
+        <div id="repo-file-list" class="file-list"></div>
+        <button id="delete-repo-btn" class="btn btn-secondary btn-block" style="margin-top:14px; color:var(--red); border-color:rgba(245,101,101,.4)">Delete Repository</button>
+      </div>
+
+    </div>
+  </div><!-- /page-custom -->
+</div><!-- /app-shell -->
 
 <!-- Diff modal (full-screen sheet on mobile) -->
 <div id="diff-modal" class="modal hidden">
@@ -263,6 +329,21 @@
       <button id="diff-modal-close" class="icon-btn">✕</button>
     </div>
     <div id="diff-modal-body" class="modal-body"></div>
+  </div>
+</div>
+
+<!-- File viewer / editor modal (Custom page) -->
+<div id="file-editor-modal" class="modal hidden">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <span id="file-editor-title">File</span>
+      <button id="file-editor-close" class="icon-btn">✕</button>
+    </div>
+    <div id="file-editor-body" class="modal-body file-editor-body"></div>
+    <div id="file-editor-actions" class="modal-actions hidden">
+      <button id="file-editor-cancel" class="btn btn-secondary">Cancel</button>
+      <button id="file-editor-save" class="btn btn-primary">Save Changes</button>
+    </div>
   </div>
 </div>
 
@@ -280,5 +361,6 @@
 <script src="js/commit.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/app.js"></script>
+<script src="js/custom.js"></script>
 </body>
 </html>

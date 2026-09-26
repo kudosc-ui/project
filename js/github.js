@@ -140,8 +140,77 @@ const GitHub = (() => {
     return request(`/repos/${owner}/${repo}/commits/${encodeURIComponent(branch)}?per_page=1`);
   }
 
+  // ---- Repository creation & metadata ----
+
+  function createRepo(name, isPrivate, description) {
+    return request('/user/repos', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        private: !!isPrivate,
+        description: description || '',
+        auto_init: false
+      })
+    });
+  }
+
+  function getRepo(owner, repo) {
+    return request(`/repos/${owner}/${repo}`);
+  }
+
+  function deleteRepo(owner, repo) {
+    return request(`/repos/${owner}/${repo}`, { method: 'DELETE' });
+  }
+
+  /** Creates a brand-new branch ref (used for a repo's very first commit, where no ref exists yet). */
+  function createRef(owner, repo, branch, commitSha) {
+    return request(`/repos/${owner}/${repo}/git/refs`, {
+      method: 'POST',
+      body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: commitSha })
+    });
+  }
+
+  // ---- Single-file contents (view / edit / delete individual files) ----
+
+  function getContents(owner, repo, path, ref) {
+    const q = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+    return request(`/repos/${owner}/${repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}${q}`);
+  }
+
+  function putContents(owner, repo, path, message, base64Content, sha, branch) {
+    const payload = { message, content: base64Content, branch };
+    if (sha) payload.sha = sha; // required when overwriting an existing file
+    return request(`/repos/${owner}/${repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  function deleteFileContents(owner, repo, path, message, sha, branch) {
+    return request(`/repos/${owner}/${repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ message, sha, branch })
+    });
+  }
+
+  // ---- GitHub Pages ----
+
+  function enablePages(owner, repo, branch, path = '/') {
+    return request(`/repos/${owner}/${repo}/pages`, {
+      method: 'POST',
+      body: JSON.stringify({ source: { branch, path } })
+    });
+  }
+
+  function getPages(owner, repo) {
+    return request(`/repos/${owner}/${repo}/pages`);
+  }
+
   return {
     listRepos, listBranches, getBranch, getRef, getCommit, getTree,
-    createBlob, createTree, createCommit, updateRef, getLatestCommitForBranch
+    createBlob, createTree, createCommit, updateRef, getLatestCommitForBranch,
+    createRepo, getRepo, deleteRepo, createRef,
+    getContents, putContents, deleteFileContents,
+    enablePages, getPages
   };
 })();

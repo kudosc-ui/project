@@ -44,13 +44,19 @@ const Commit = (() => {
   async function pushCommit({ owner, repo, branch, baseCommitSha, baseTreeSha, diff, message, onProgress, onFileResult }) {
     const noop = () => {};
     onFileResult = onFileResult || noop;
+    const isInitialCommit = !baseCommitSha; // true when the repo has no commits/ref yet
 
     // 1. Re-check for conflicts right before we start mutating anything.
-    onProgress(2, 'Checking repository state…');
-    if (await hasConflict(owner, repo, branch, baseCommitSha)) {
-      const err = new Error('conflict');
-      err.kind = 'conflict';
-      throw err;
+    // Skipped entirely for a brand-new repo — there's nothing to conflict with.
+    if (!isInitialCommit) {
+      onProgress(2, 'Checking repository state…');
+      if (await hasConflict(owner, repo, branch, baseCommitSha)) {
+        const err = new Error('conflict');
+        err.kind = 'conflict';
+        throw err;
+      }
+    } else {
+      onProgress(2, 'Preparing first commit…');
     }
 
     const changed = [...diff.added, ...diff.modified];
@@ -96,25 +102,31 @@ const Commit = (() => {
       throw err;
     }
 
-    // 5. Build the new tree on top of the baseline tree.
+    // 5. Build the new tree. A brand-new repo has no base tree to build on.
     onProgress(93, 'Creating tree…');
-    const newTree = await GitHub.createTree(owner, repo, baseTreeSha, treeEntries);
+    const newTree = await GitHub.createTree(owner, repo, isInitialCommit ? null : baseTreeSha, treeEntries);
 
-    // 6. One final conflict check right before committing.
-    if (await hasConflict(owner, repo, branch, baseCommitSha)) {
+    // 6. One final conflict check right before committing (not applicable to a first commit).
+    if (!isInitialCommit && await hasConflict(owner, repo, branch, baseCommitSha)) {
       const err = new Error('conflict');
       err.kind = 'conflict';
       throw err;
     }
 
-    // 7. Create the commit object.
+    // 7. Create the commit object. A first commit has no parent.
     onProgress(96, 'Creating commit…');
-    const newCommit = await GitHub.createCommit(owner, repo, message, newTree.sha, baseCommitSha);
+    const newCommit = await GitHub.createCommit(owner, repo, message, newTree.sha, isInitialCommit ? null : baseCommitSha);
 
-    // 8. Move the branch pointer. force:false so GitHub itself rejects a
-    // non-fast-forward update if something slipped through the checks above.
+    // 8. Point the branch at the new commit. A brand-new repo has no ref yet,
+    // so it must be created rather than updated; force:false on the update
+    // path so GitHub itself rejects a non-fast-forward change as a last
+    // line of defense.
     onProgress(98, 'Updating branch…');
-    await GitHub.updateRef(owner, repo, branch, newCommit.sha, false);
+    if (isInitialCommit) {
+      await GitHub.createRef(owner, repo, branch, newCommit.sha);
+    } else {
+      await GitHub.updateRef(owner, repo, branch, newCommit.sha, false);
+    }
 
     onProgress(100, 'Done');
     return newCommit;

@@ -183,7 +183,39 @@ forward update as a last line of defense.
   client-side. It never touches your GitHub token or makes any network
   requests of its own.
 
-## 8. Project structure
+## 9. The Custom page
+
+Alongside the Home dashboard (folder/ZIP sync into an existing repo), a
+**Home / Custom** tab bar at the top switches to a second page for
+repository-level management:
+
+- **Create New Repository** — give it a name, choose **Public** or
+  **Private**, and optionally attach a ZIP file. If you attach one, GitSync
+  extracts it in the browser and pushes it as the repository's first commit
+  (same one-commit approach as the Home page's sync). Leave the ZIP off to
+  create an empty repository you can sync into later from Home.
+- **Host with GitHub Pages** — after creating a *public* repository, a
+  button appears to enable GitHub Pages for it. GitSync calls GitHub's Pages
+  API and shows you the resulting live URL
+  (`https://<username>.github.io/<repo>/`). Pages typically takes a minute
+  or two to finish deploying after being enabled.
+- **Your Repositories** — a searchable list of every repository you have
+  access to, each with a **Browse Files** action and a direct GitHub link.
+- **Browse Files** on any repository shows every file in its default
+  branch, with three actions per file:
+  - **View** — renders images inline, shows a sandboxed live preview for
+    `.html`/`.htm` files, and displays plain text/code read-only. Binary
+    files that aren't images show a "preview not available" notice instead
+    of garbled output.
+  - **Edit** — opens the same content in an editable text area; **Save
+    Changes** commits the update directly to that file via GitHub's
+    Contents API (one commit per saved file, separate from the Home page's
+    batch-sync commits).
+  - **Delete** — removes the file with a confirmation prompt.
+  - A **Delete Repository** button is also available at the bottom of the
+    file browser, with two confirmation prompts, since it's irreversible.
+
+## 10. Project structure
 
 ```
 index.html
@@ -197,6 +229,7 @@ js/
   commit.js    # blob -> tree -> commit -> ref orchestration
   zip.js       # client-side ZIP extraction (uses JSZip)
   ui.js        # DOM rendering helpers
+  custom.js    # Custom page: repo creation, Pages hosting, file browser/editor
 README.md
 ```
 
