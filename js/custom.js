@@ -33,6 +33,7 @@
     if (err.kind === 'rate_limit') return 'GitHub API rate limit reached. Please wait a few minutes and try again.';
     if (err.kind === 'network') return 'Network error. Check your connection and try again.';
     if (err.kind === 'invalid') return err.message;
+    if (err.kind === 'not_ready') return err.message;
     return err.message || 'Something went wrong. Please try again.';
   }
 
@@ -180,19 +181,33 @@
   /**
    * Polls for the thing the push actually needs — the branch ref existing —
    * rather than just the repo record existing. With auto_init:true this
-   * resolves almost immediately since GitHub creates the ref as part of
-   * repo creation, but this keeps a small safety margin for that write to
-   * become visible.
+   * usually resolves almost immediately since GitHub creates the ref as
+   * part of repo creation, but replication across GitHub's backend can
+   * occasionally lag several seconds, so this retries generously and,
+   * unlike before, THROWS a clear error if it never becomes ready instead
+   * of silently letting the caller crash into the same failure one step
+   * later with a confusing message.
    */
   async function waitForRepoReady(owner, name, branch) {
-    for (let attempt = 0; attempt < 5; attempt++) {
+    const maxAttempts = 8;
+    let lastErr = null;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         await GitHub.getRef(owner, name, branch);
         return;
       } catch (e) {
-        await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+        lastErr = e;
+        const wait = Math.min(700 * (attempt + 1), 4000);
+        await new Promise(r => setTimeout(r, wait));
       }
     }
+    const err = new Error(
+      'GitHub took longer than usual to finish setting up the new repository. ' +
+      'Nothing was lost — use Retry Upload in a few seconds.'
+    );
+    err.kind = 'not_ready';
+    err.cause = lastErr;
+    throw err;
   }
 
   async function handleCreateRepo() {
