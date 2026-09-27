@@ -2,9 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>GitSync — Home</title>
+<meta name="description" content="Sync a local project folder to a GitHub repository in one clean commit.">
+
+<!-- Theme applied before first paint to avoid a flash of the wrong theme -->
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('gitsync-theme');
+    if(!t){ t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+    document.documentElement.setAttribute('data-theme', t);
+  }catch(e){}
+})();
+</script>
+
 <link rel="stylesheet" href="style.css">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#5b7cff" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#4f6bf0" media="(prefers-color-scheme: light)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GitSync">
+<link rel="icon" href="icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 </head>
 <body>
 
@@ -29,12 +55,18 @@
 <div id="app-shell" class="hidden">
 
   <header class="navbar">
-    <div class="navbar-brand"><span class="logo-badge">⇄</span> GitSync</div>
+    <div class="navbar-brand"><span class="logo-badge"><img src="icons/icon-96.png" alt="" width="28" height="28"></span> GitSync</div>
     <nav class="navbar-links">
       <a href="index.html" class="navbar-link active">Home</a>
       <a href="custom.html" class="navbar-link">Custom</a>
     </nav>
-    <button id="settings-toggle" class="icon-btn" title="Settings & Accounts">⚙️</button>
+    <div class="navbar-actions">
+      <button id="theme-toggle" class="icon-btn theme-toggle" type="button" title="Switch to light theme" aria-label="Switch to light theme">
+        <svg class="theme-icon icon-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+        <svg class="theme-icon icon-moon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
+      <button id="settings-toggle" class="icon-btn" title="Settings & Accounts">⚙️</button>
+    </div>
   </header>
 
   <div class="layout">
@@ -249,7 +281,10 @@
           </div>
 
           <label class="field-label">Theme</label>
-          <div class="static-value">Dark</div>
+          <div class="theme-settings-row">
+            <div class="static-value js-theme-label">Dark</div>
+            <button id="settings-theme-toggle" class="btn btn-secondary theme-toggle" type="button">Toggle</button>
+          </div>
         </div>
       </section>
 
@@ -295,5 +330,13 @@
 <script src="js/ui.js"></script>
 <script src="js/accounts.js"></script>
 <script src="js/app.js"></script>
+<script src="js/theme.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('service-worker.js').catch(function () { /* ignore */ });
+  });
+}
+</script>
 </body>
 </html>

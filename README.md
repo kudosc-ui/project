@@ -241,9 +241,12 @@ repository-level management:
 ## 11. Project structure
 
 ```
-index.html     # Home page
-custom.html    # Custom page
+index.html         # Home page
+custom.html        # Custom page
 style.css
+manifest.json       # PWA manifest (name, icons, theme colors)
+service-worker.js   # Offline app-shell caching
+icons/               # App icons generated for every required PWA size
 js/
   app.js       # Home page: state + event wiring
   auth.js      # multi-account token storage & validation
@@ -255,7 +258,31 @@ js/
   zip.js       # client-side ZIP extraction (uses JSZip)
   ui.js        # DOM rendering helpers, shared confirm() modal
   custom.js    # Custom page: repo creation, Pages hosting, file browser/editor
+  theme.js     # Light/dark theme toggle + persistence
 README.md
 ```
+
+## 12. Theme
+
+GitSync ships with both a dark and a light theme. It follows your system
+preference the first time you open it, and you can switch anytime with the
+sun/moon button in the navbar (or the toggle on the Settings page) — your
+choice is remembered for next time via `localStorage`.
+
+## 13. Installing as an app (PWA)
+
+GitSync is a installable Progressive Web App:
+
+- `manifest.json` defines the app's name, colors, and a full icon set
+  (48–512px, plus maskable icons) generated from the GitSync logo.
+- `service-worker.js` caches the static app shell (HTML/CSS/JS/icons) so the
+  app opens instantly and the shell still loads offline. GitHub API calls
+  are never cached or intercepted — syncing itself always needs a live
+  connection.
+- To package it with [PWABuilder](https://www.pwabuilder.com/): host this
+  folder anywhere over `https://` (GitHub Pages, Netlify, Vercel, etc.),
+  then enter that URL into PWABuilder. It will detect the manifest and
+  service worker automatically and let you build Android/iOS/Windows
+  packages from there.
 
 Enjoy shipping without thirty little commits.
