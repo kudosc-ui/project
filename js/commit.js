@@ -106,13 +106,21 @@ const Commit = (() => {
         throw err;
       }
     } else {
-      // GitHub's Git Data API (blobs/trees/commits) can briefly 404 right
-      // after a repository is created — the repo record exists but isn't
-      // fully provisioned yet. A short pause here, plus retrying 'not_found'
-      // on the calls below, is what stops a brand-new repo from ending up
-      // permanently empty when the very first push lands too fast.
+      // GitHub's Git Data API (blobs/trees/commits) can lag behind the repo
+      // record itself by anywhere from under a second to several seconds —
+      // a fixed pause here used to guess how long that gap was, and on a
+      // slower-provisioning repo (or a project with many files, all hitting
+      // the API the moment the pause ends) it guessed wrong: every blob
+      // request landed too early, got 404, and all of them failed together
+      // with none left to retry into. Actually probing readiness — by
+      // creating one throwaway blob and retrying *that* until it succeeds —
+      // waits exactly as long as this repo needs instead of a guess, and
+      // nothing proceeds until the API is genuinely ready to accept writes.
       onProgress(2, 'Preparing first commit…');
-      await sleep(1500);
+      await withRetry(
+        () => GitHub.createBlob(owner, repo, ''),
+        ['not_found', 'permission']
+      );
     }
 
     const changed = [...diff.added, ...diff.modified];
@@ -136,7 +144,7 @@ const Commit = (() => {
       (item) => withRetry(async () => {
         const content = await Files.readFileContent(item.file, item.path);
         return GitHub.createBlob(owner, repo, content.base64);
-      }, isInitialCommit ? ['not_found'] : undefined),
+      }, isInitialCommit ? ['not_found', 'permission'] : undefined),
       (item, blob, err) => {
         if (err) {
           failures.push({ path: item.path, error: err });
@@ -167,7 +175,23 @@ const Commit = (() => {
     // 4. If anything failed, stop here. Nothing has been committed — the
     // successfully-created blobs are unreferenced and harmless.
     if (failures.length) {
-      const err = new Error(`${failures.length} file(s) failed to upload. No commit was created.`);
+      // Every file usually fails for the *same* underlying reason (an
+      // expired token, a permission gap, a rate limit) — surface that
+      // reason directly instead of just a bare count, so the person isn't
+      // left staring at "33 files failed" with no idea why.
+      const byKind = new Map();
+      for (const f of failures) {
+        const kind = (f.error && f.error.kind) || 'unknown';
+        byKind.set(kind, (byKind.get(kind) || 0) + 1);
+      }
+      const [topKind] = [...byKind.entries()].sort((a, b) => b[1] - a[1])[0];
+      const sample = failures.find(f => (f.error && f.error.kind) === topKind).error;
+      const reasonCounts = byKind.size > 1
+        ? ` (${[...byKind.entries()].map(([k, n]) => `${n} ${k}`).join(', ')})`
+        : '';
+      const err = new Error(
+        `${sample.message || 'Upload failed'} (${failures.length} file(s) affected${reasonCounts}). No commit was created.`
+      );
       err.kind = 'partial_failure';
       err.failures = failures;
       throw err;
@@ -177,7 +201,7 @@ const Commit = (() => {
     onProgress(93, 'Creating tree…');
     const newTree = await withRetry(
       () => GitHub.createTree(owner, repo, isInitialCommit ? null : baseTreeSha, treeEntries),
-      isInitialCommit ? ['not_found'] : undefined
+      isInitialCommit ? ['not_found', 'permission'] : undefined
     );
 
     // 6. One final conflict check right before committing (not applicable to a first commit).
@@ -191,7 +215,7 @@ const Commit = (() => {
     onProgress(96, 'Creating commit…');
     const newCommit = await withRetry(
       () => GitHub.createCommit(owner, repo, message, newTree.sha, isInitialCommit ? null : baseCommitSha),
-      isInitialCommit ? ['not_found'] : undefined
+      isInitialCommit ? ['not_found', 'permission'] : undefined
     );
 
     // 8. Point the branch at the new commit. A brand-new repo has no ref yet,
@@ -200,7 +224,7 @@ const Commit = (() => {
     // line of defense.
     onProgress(98, 'Updating branch…');
     if (isInitialCommit) {
-      await withRetry(() => GitHub.createRef(owner, repo, branch, newCommit.sha), ['not_found']);
+      await withRetry(() => GitHub.createRef(owner, repo, branch, newCommit.sha), ['not_found', 'permission']);
     } else {
       await withRetry(() => GitHub.updateRef(owner, repo, branch, newCommit.sha, false));
     }
