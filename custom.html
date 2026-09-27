@@ -69,22 +69,29 @@
   <div id="custom-connected" class="hidden">
     <div class="content custom-content">
 
-      <div class="card">
-        <div class="connected-row">
-          <span class="dot dot-green"></span>
-          <span>Connected as <strong id="custom-username-label">—</strong></span>
-        </div>
+      <div class="connected-row flat-row">
+        <span class="dot dot-green"></span>
+        <span>Connected as <strong id="custom-username-label">—</strong></span>
       </div>
 
-      <div class="card">
-        <div class="card-title">Create New Repository</div>
+      <div class="settings-section">
+        <div class="settings-section-head">
+          <span class="settings-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </span>
+          <div>
+            <div class="settings-section-title">Create New Repository</div>
+            <div class="settings-section-sub">Spin up a fresh repo, optionally seeded from a ZIP</div>
+          </div>
+        </div>
+
         <label class="field-label" for="new-repo-name">Repository Name</label>
         <input type="text" id="new-repo-name" placeholder="my-new-project" autocomplete="off">
 
         <label class="field-label">Visibility</label>
-        <div class="radio-row">
-          <label><input type="radio" name="new-repo-visibility" value="public" checked> Public</label>
-          <label><input type="radio" name="new-repo-visibility" value="private"> Private</label>
+        <div class="segmented">
+          <label class="segmented-opt"><input type="radio" name="new-repo-visibility" value="public" checked><span>Public</span></label>
+          <label class="segmented-opt"><input type="radio" name="new-repo-visibility" value="private"><span>Private</span></label>
         </div>
 
         <label class="field-label" for="new-repo-zip-input">Project ZIP <span class="hint-inline">(optional — extracted and pushed as the first commit)</span></label>
@@ -94,15 +101,15 @@
         <p id="create-repo-error" class="error-text hidden"></p>
       </div>
 
-      <div class="card center-card hidden" id="create-repo-progress-card">
+      <div class="flat-panel-center hidden" id="create-repo-progress-card">
         <div id="create-repo-progress-label" class="progress-label">Creating repository…</div>
         <div class="progress-track"><div id="create-repo-progress-bar" class="progress-fill" style="width:0%"></div></div>
         <div id="create-repo-progress-percent" class="progress-percent">0%</div>
         <div id="create-repo-progress-detail" class="progress-detail"></div>
       </div>
 
-      <div class="card hidden" id="create-repo-success-card">
-        <div class="card-title">Repository Created</div>
+      <div class="settings-section hidden" id="create-repo-success-card">
+        <div class="settings-section-title" style="margin-bottom:8px">Repository Created</div>
         <div id="create-repo-result-name" class="commit-msg">—</div>
         <a id="create-repo-result-link" class="btn-link" href="#" target="_blank" rel="noopener">Open on GitHub ↗</a>
         <p id="create-repo-skip-note" class="hint hidden" style="margin-top:8px"></p>
@@ -114,13 +121,23 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-title">Your Repositories</div>
+      <div class="settings-divider"></div>
+
+      <div class="settings-section">
+        <div class="settings-section-head">
+          <span class="settings-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          </span>
+          <div>
+            <div class="settings-section-title">Your Repositories</div>
+            <div class="settings-section-sub">Browse, publish, or delete a repository</div>
+          </div>
+        </div>
         <input type="text" id="custom-repo-search" placeholder="Search repositories…">
         <div id="custom-repo-list" class="file-list" style="margin-top:12px"></div>
       </div>
 
-      <div class="card hidden" id="repo-browser-card">
+      <div class="settings-section hidden" id="repo-browser-card">
         <div class="connected-row" style="margin-bottom:10px">
           <span id="repo-browser-title" class="card-title" style="margin:0">Files</span>
           <button id="repo-browser-close" class="btn-link small">Close</button>

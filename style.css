@@ -51,7 +51,7 @@ html[data-theme="light"]{
 }
 
 *{box-sizing:border-box;}
-html,body{height:100%;}
+html,body{height:100%; overflow-x:hidden;}
 html{color-scheme:dark;}
 html[data-theme="light"]{color-scheme:light;}
 body{
@@ -278,6 +278,14 @@ html[data-theme="light"] .theme-toggle .icon-moon{display:block;}
 @media (min-width:860px){
   .navbar{padding:14px 32px;}
 }
+@media (max-width:400px){
+  .navbar{gap:8px; padding:10px 12px;}
+  .navbar-logo{width:26px; height:26px; border-radius:8px;}
+  .navbar-links{padding:2px;}
+  .navbar-link{padding:7px 11px; font-size:12.5px;}
+  .navbar-actions{gap:2px;}
+  .navbar .icon-btn{width:34px; height:34px;}
+}
 .topbar{display:none;}
 .layout{display:flex; min-height:calc(100vh - 61px);}
 .sidebar{
@@ -440,6 +448,7 @@ html[data-theme="light"] .theme-toggle .icon-moon{display:block;}
 /* ---------- Settings: full-screen, no boxed cards ---------- */
 .settings-section{padding:4px 2px 22px;}
 .settings-divider{height:1px; background:var(--border); margin:0 0 22px;}
+.flat-panel-center{text-align:center; padding:36px 4px;}
 .commit-file-stat{color:var(--text-dim); font-size:11.5px; margin-top:2px; font-family:"SF Mono",Consolas,Menlo,monospace;}
 .commit-file-stat .add-stat{color:var(--green); font-weight:700;}
 .commit-file-stat .del-stat{color:var(--red); font-weight:700;}
