@@ -101,7 +101,12 @@
     }
   }
 
-  function handleDisconnect() {
+  async function handleDisconnect() {
+    const ok = await UI.confirm(
+      'You will need to paste your access token again to reconnect this account.',
+      'Disconnect this account?'
+    );
+    if (!ok) return;
     Auth.clearToken();
     // If another saved account became active, just carry on as that account
     // instead of forcing a re-login.
@@ -783,7 +788,21 @@
       document.getElementById('fallback-files-btn').classList.remove('hidden');
     }
 
-    tryAutoLogin();
+    const splashStart = Date.now();
+    tryAutoLogin().finally(() => {
+      // Keep the splash on screen for a small minimum time so it never
+      // just flashes on a fast/cached login — then fade it out.
+      const elapsed = Date.now() - splashStart;
+      const wait = Math.max(0, 500 - elapsed);
+      setTimeout(hideSplash, wait);
+    });
+  }
+
+  function hideSplash() {
+    const splash = document.getElementById('app-splash');
+    if (!splash) return;
+    splash.classList.add('splash-hide');
+    setTimeout(() => splash.remove(), 500);
   }
 
   document.addEventListener('DOMContentLoaded', init);
