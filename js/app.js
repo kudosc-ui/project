@@ -137,6 +137,7 @@
       }
       document.getElementById('upload-btn').disabled = false;
       document.getElementById('upload-zip-btn').disabled = false;
+      document.getElementById('upload-single-btn').disabled = false;
     } catch (e) {
       UI.toast(friendlyError(e));
     }
@@ -208,6 +209,7 @@
     branchSelect.innerHTML = '<option>Loading branches…</option>';
     syncBranchTriggerLabel('Loading branches…');
     branchTrigger.classList.add('disabled');
+    document.getElementById('new-branch-btn').disabled = true;
     const { owner, repo } = splitFullName(fullName);
     try {
       const branches = await GitHub.listBranches(owner, repo);
@@ -216,6 +218,7 @@
       state.currentBranch = branchSelect.value;
       syncBranchTriggerLabel();
       branchTrigger.classList.toggle('disabled', !branches.length);
+      document.getElementById('new-branch-btn').disabled = !branches.length;
       await refreshLastCommit();
     } catch (e) {
       UI.toast(friendlyError(e));
@@ -226,6 +229,90 @@
     state.currentBranch = document.getElementById('branch-select').value;
     syncBranchTriggerLabel();
     refreshLastCommit();
+  }
+
+  // ---------------- New branch creation ----------------
+
+  function isValidBranchName(name) {
+    if (!name || name.length > 250) return false;
+    // A pragmatic subset of git's ref-name rules — enough to catch the
+    // mistakes people actually make, without re-implementing git's full spec.
+    if (/^[\/.]|[\/.]$/.test(name)) return false;
+    if (/\.\.|\/\/|[ ~^:?*\[\\]|@\{/.test(name)) return false;
+    if (name === '@') return false;
+    return true;
+  }
+
+  function openNewBranchModal() {
+    if (!state.currentRepoFullName || !state.currentBranch) return;
+    const modal = document.getElementById('new-branch-modal');
+    const input = document.getElementById('new-branch-name-input');
+    const err = document.getElementById('new-branch-error');
+    document.getElementById('new-branch-base-hint').textContent = `Branching off "${state.currentBranch}"`;
+    input.value = '';
+    err.classList.add('hidden');
+    modal.classList.remove('hidden');
+    document.getElementById('new-branch-create-btn').disabled = false;
+    document.getElementById('new-branch-create-btn').textContent = 'Create Branch';
+    setTimeout(() => input.focus(), 50);
+  }
+
+  function closeNewBranchModal() {
+    document.getElementById('new-branch-modal').classList.add('hidden');
+  }
+
+  async function handleCreateBranch() {
+    const input = document.getElementById('new-branch-name-input');
+    const err = document.getElementById('new-branch-error');
+    const createBtn = document.getElementById('new-branch-create-btn');
+    const name = input.value.trim();
+    err.classList.add('hidden');
+
+    if (!isValidBranchName(name)) {
+      err.textContent = 'Enter a valid branch name (no spaces, ~^:?*[\\, or leading/trailing slashes).';
+      err.classList.remove('hidden');
+      return;
+    }
+    if (state.branches.some(b => b.name === name)) {
+      err.textContent = 'A branch with that name already exists.';
+      err.classList.remove('hidden');
+      return;
+    }
+
+    const baseBranch = state.branches.find(b => b.name === state.currentBranch);
+    if (!baseBranch) {
+      err.textContent = "Couldn't find the current branch's latest commit. Try reopening the repository.";
+      err.classList.remove('hidden');
+      return;
+    }
+
+    createBtn.disabled = true;
+    createBtn.textContent = 'Creating…';
+    const { owner, repo } = splitFullName(state.currentRepoFullName);
+    try {
+      await GitHub.createRef(owner, repo, name, baseBranch.commit.sha);
+      closeNewBranchModal();
+      UI.toast(`Branch "${name}" created.`);
+
+      // Refresh the branch list and switch straight to the new branch so
+      // uploads land there immediately.
+      const branchSelect = document.getElementById('branch-select');
+      const branches = await GitHub.listBranches(owner, repo);
+      state.branches = branches;
+      UI.renderBranchOptions(branchSelect, branches, state.defaultBranchName);
+      branchSelect.value = name;
+      state.currentBranch = name;
+      syncBranchTriggerLabel();
+      document.getElementById('branch-select-trigger').classList.remove('disabled');
+      document.getElementById('new-branch-btn').disabled = false;
+      await refreshLastCommit();
+    } catch (e) {
+      err.textContent = friendlyError(e);
+      err.classList.remove('hidden');
+    } finally {
+      createBtn.disabled = false;
+      createBtn.textContent = 'Create Branch';
+    }
   }
 
   async function refreshLastCommit() {
@@ -302,6 +389,26 @@
     }
   }
 
+  function handleSingleFileClick() {
+    document.getElementById('single-file-input').click();
+  }
+
+  async function handleSingleFileSelected(fileList) {
+    if (!fileList || !fileList.length) return;
+    try {
+      const { rootName, fileMap, skipped, tooLarge } = Files.buildFileMap(fileList);
+      // A single-file change must never be scoped as "entire repository" —
+      // that mode treats everything else in the repo as missing and marks
+      // it for deletion, which would be destructive here. Always diff it
+      // like a scoped folder upload, regardless of the dashboard's Sync
+      // Mode setting.
+      await proceedWithFileMap(rootName, fileMap, skipped, tooLarge, 'folder');
+    } catch (e) {
+      UI.toast(friendlyError(e));
+      UI.showView('view-dashboard');
+    }
+  }
+
   function setZipProgress(pct, label, detail) {
     document.getElementById('zip-progress-bar').style.width = `${pct}%`;
     document.getElementById('zip-progress-percent').textContent = `${pct}%`;
@@ -310,13 +417,15 @@
   }
 
   /**
-   * Shared tail for both folder upload and ZIP upload: hash local files,
-   * fetch the remote baseline, compute the diff, and land on the compare
-   * screen. `fileMap` values may be File objects (folder upload) or Blobs
-   * (ZIP upload) — both support .arrayBuffer() and .size, which is all this
-   * pipeline needs.
+   * Shared tail for folder upload, ZIP upload, and single-file upload: hash
+   * local files, fetch the remote baseline, compute the diff, and land on
+   * the compare screen. `fileMap` values may be File objects (folder/single
+   * file) or Blobs (ZIP upload) — both support .arrayBuffer() and .size,
+   * which is all this pipeline needs. `forceSyncMode`, when given, overrides
+   * state.syncMode for just this one diff without changing the user's saved
+   * preference.
    */
-  async function proceedWithFileMap(rootName, fileMap, skipped, tooLarge) {
+  async function proceedWithFileMap(rootName, fileMap, skipped, tooLarge, forceSyncMode) {
     UI.showView('view-progress');
     UI.setProgress(0, 'Reading project…', '');
     state.uploadedFileMap = fileMap;
@@ -350,7 +459,7 @@
 
     UI.setProgress(85, 'Comparing files…', '');
     const remoteMap = Compare.buildRemoteFileMap(baseline.fullTree);
-    state.diff = Compare.computeDiff(fileMap, localHashes, remoteMap, state.syncMode, rootName);
+    state.diff = Compare.computeDiff(fileMap, localHashes, remoteMap, forceSyncMode || state.syncMode, rootName);
 
     UI.setProgress(100, 'Done', '');
     setTimeout(() => showCompareView(), 200);
@@ -557,6 +666,7 @@
     if (btn.dataset.nav === 'dashboard') UI.showView('view-dashboard');
     if (btn.dataset.nav === 'settings') { populateSettings(); UI.showView('view-settings'); }
     if (btn.dataset.nav === 'history') UI.showView('view-dashboard'); // history surfaces via last-commit card
+    if (btn.dataset.nav === 'howto') UI.showView('view-howto');
   }
 
   function populateSettings() {
@@ -616,6 +726,23 @@
       e.target.value = ''; // allow re-selecting the same zip later
     });
 
+    document.getElementById('upload-single-btn').addEventListener('click', handleSingleFileClick);
+    document.getElementById('single-file-input').addEventListener('change', (e) => {
+      handleSingleFileSelected(e.target.files);
+      e.target.value = ''; // allow re-selecting the same file later
+    });
+
+    document.getElementById('new-branch-btn').addEventListener('click', openNewBranchModal);
+    document.getElementById('new-branch-modal-close').addEventListener('click', closeNewBranchModal);
+    document.getElementById('new-branch-cancel-btn').addEventListener('click', closeNewBranchModal);
+    document.getElementById('new-branch-create-btn').addEventListener('click', handleCreateBranch);
+    document.getElementById('new-branch-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'new-branch-modal') closeNewBranchModal();
+    });
+    document.getElementById('new-branch-name-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); handleCreateBranch(); }
+    });
+
     document.getElementById('results-back-btn').addEventListener('click', resetToDashboard);
     document.getElementById('results-retry-btn').addEventListener('click', () => UI.showView('view-commit'));
 
@@ -632,6 +759,15 @@
     document.getElementById('last-commit-card').addEventListener('click', handleLastCommitClick);
     document.getElementById('commit-files-back-btn').addEventListener('click', resetToDashboard);
     document.getElementById('settings-back-btn').addEventListener('click', resetToDashboard);
+
+    document.getElementById('settings-howto-link').addEventListener('click', () => {
+      UI.setNavActive('howto');
+      UI.showView('view-howto');
+    });
+    document.getElementById('howto-back-btn').addEventListener('click', resetToDashboard);
+    document.getElementById('howto-open-token-page').addEventListener('click', () => {
+      window.open('https://github.com/settings/tokens/new?scopes=repo&description=GitSync', '_blank', 'noopener');
+    });
 
     document.getElementById('diff-modal-close').addEventListener('click', UI.closeDiffModal);
     document.getElementById('diff-modal').addEventListener('click', (e) => {

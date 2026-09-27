@@ -75,6 +75,7 @@
     <nav class="sidebar">
       <button class="nav-item active" data-nav="dashboard">Dashboard</button>
       <button class="nav-item" data-nav="history">History</button>
+      <button class="nav-item" data-nav="howto">How to Use</button>
       <button class="nav-item" data-nav="settings">Settings</button>
     </nav>
 
@@ -113,6 +114,7 @@
             <span class="field-select-chevron">⌄</span>
           </div>
           <select id="branch-select" class="visually-hidden" aria-hidden="true" tabindex="-1"><option>Select a repository first</option></select>
+          <button type="button" id="new-branch-btn" class="btn-link small new-branch-link" disabled>+ Create new branch</button>
 
           <label class="field-label">Sync Mode</label>
           <div class="segmented" id="sync-mode-segmented">
@@ -147,11 +149,22 @@
               </span>
               <span class="upload-option-arrow">›</span>
             </button>
+            <button id="upload-single-btn" class="upload-option" disabled>
+              <span class="upload-option-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+              </span>
+              <span class="upload-option-text">
+                <span class="upload-option-title">Upload / Change a Single File</span>
+                <span class="upload-option-sub">Add or update just one file in the repo</span>
+              </span>
+              <span class="upload-option-arrow">›</span>
+            </button>
           </div>
         </div>
         <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden">
         <input type="file" id="files-input" multiple class="hidden">
         <input type="file" id="zip-input" accept=".zip,application/zip" class="hidden">
+        <input type="file" id="single-file-input" class="hidden">
         <button id="fallback-files-btn" class="btn-link small hidden">Folder upload not supported — select files instead</button>
 
         <button type="button" class="last-commit-row" id="last-commit-card" style="display:none">
@@ -320,6 +333,19 @@
           </div>
         </div>
 
+        <button type="button" class="howto-link-row" id="settings-howto-link">
+          <span class="howto-link-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </span>
+          <span class="howto-link-text">
+            <span class="howto-link-title">How to Use GitSync</span>
+            <span class="howto-link-sub">Get a GitHub token & walk through every feature, step by step</span>
+          </span>
+          <span class="last-commit-chevron">›</span>
+        </button>
+
+        <div class="settings-divider"></div>
+
         <div class="settings-section">
           <div class="settings-section-head">
             <span class="settings-icon">
@@ -389,11 +415,176 @@
             </button>
           </div>
         </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <span class="settings-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            </span>
+            <div>
+              <div class="settings-section-title">Support the Creator</div>
+              <div class="settings-section-sub">GitSync is built and maintained independently</div>
+            </div>
+          </div>
+
+          <a href="https://youtube.com/@YOUR_CHANNEL_HANDLE" target="_blank" rel="noopener" class="youtube-support-card">
+            <span class="youtube-support-icon">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.6 15.6V8.4L15.8 12l-6.2 3.6z"/></svg>
+            </span>
+            <span class="youtube-support-text">
+              <span class="youtube-support-title">Subscribe on YouTube</span>
+              <span class="youtube-support-sub">More apps &amp; tutorials from the creator of GitSync</span>
+            </span>
+            <span class="youtube-support-arrow">↗</span>
+          </a>
+          <p class="hint">Enjoying GitSync? A subscribe goes a long way and costs nothing.</p>
+        </div>
+      </section>
+
+      <!-- ============ HOW TO USE VIEW ============ -->
+      <section id="view-howto" class="view">
+
+        <div class="page-header">
+          <button id="howto-back-btn" class="icon-btn back-btn" aria-label="Back to home" title="Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
+          <div class="page-header-title">
+            <div class="page-header-title-main">How to Use GitSync</div>
+            <div class="page-header-title-sub">Everything from getting a token to your first push</div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <span class="settings-icon howto-icon-1">1</span>
+            <div>
+              <div class="settings-section-title">Get a GitHub Personal Access Token</div>
+              <div class="settings-section-sub">One-time setup — takes about a minute</div>
+            </div>
+          </div>
+          <ol class="howto-steps">
+            <li><span class="howto-step-num">1</span><span class="howto-step-body">Open <strong>github.com</strong> in a browser and sign in.</span></li>
+            <li><span class="howto-step-num">2</span><span class="howto-step-body">Tap your profile photo in the top-right corner, then tap <strong>Settings</strong>.</span></li>
+            <li><span class="howto-step-num">3</span><span class="howto-step-body">Scroll all the way down the left sidebar and tap <strong>Developer settings</strong>.</span></li>
+            <li><span class="howto-step-num">4</span><span class="howto-step-body">Tap <strong>Personal access tokens</strong> → <strong>Tokens (classic)</strong>.</span></li>
+            <li><span class="howto-step-num">5</span><span class="howto-step-body">Tap <strong>Generate new token</strong> → <strong>Generate new token (classic)</strong>.</span></li>
+            <li><span class="howto-step-num">6</span><span class="howto-step-body">Give it a name like "GitSync" and pick an expiry.</span></li>
+            <li><span class="howto-step-num">7</span><span class="howto-step-body">Under <strong>Select scopes</strong>, check the box for <strong>repo</strong> — this covers reading, writing and creating repositories.</span></li>
+            <li><span class="howto-step-num">8</span><span class="howto-step-body">Scroll down and tap <strong>Generate token</strong>.</span></li>
+            <li><span class="howto-step-num">9</span><span class="howto-step-body">Copy the token right away — GitHub only shows it to you once.</span></li>
+          </ol>
+          <div class="howto-tip">
+            <strong>Using a "Fine-grained" token instead?</strong> Set <strong>Repository access</strong> to <strong>All repositories</strong> (not "Only select repositories") and give it <strong>Contents: Read and write</strong> permission. Otherwise a repository you create inside GitSync won't be covered by the token yet, and uploads to it will fail.
+          </div>
+          <button type="button" id="howto-open-token-page" class="btn btn-secondary btn-block" style="margin-top:14px">Open GitHub's Token Page</button>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <span class="settings-icon howto-icon-2">2</span>
+            <div>
+              <div class="settings-section-title">Connect Your Account</div>
+            </div>
+          </div>
+          <ol class="howto-steps">
+            <li><span class="howto-step-num">1</span><span class="howto-step-body">Paste the token into the <strong>GitHub Personal Access Token</strong> field on the sign-in screen.</span></li>
+            <li><span class="howto-step-num">2</span><span class="howto-step-body">Tap <strong>Connect to GitHub</strong>.</span></li>
+          </ol>
+          <p class="hint">GitSync remembers this on your device, so you won't be asked to paste it again unless you disconnect. Add more accounts any time from Settings → Connected Accounts.</p>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <span class="settings-icon howto-icon-3">3</span>
+            <div>
+              <div class="settings-section-title">Pick a Repository &amp; Branch</div>
+            </div>
+          </div>
+          <ol class="howto-steps">
+            <li><span class="howto-step-num">1</span><span class="howto-step-body">Tap the <strong>Repository</strong> field, search or scroll, then tap one to select it.</span></li>
+            <li><span class="howto-step-num">2</span><span class="howto-step-body">Tap the <strong>Branch</strong> field the same way to switch branches.</span></li>
+            <li><span class="howto-step-num">3</span><span class="howto-step-body">Tap <strong>+ Create new branch</strong> under the Branch field to make a new branch off the current one, right from the dashboard.</span></li>
+          </ol>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <span class="settings-icon howto-icon-4">4</span>
+            <div>
+              <div class="settings-section-title">Push Your Code</div>
+            </div>
+          </div>
+          <ol class="howto-steps">
+            <li><span class="howto-step-num">1</span><span class="howto-step-body">Pick <strong>Upload Project Folder</strong>, <strong>Upload ZIP File</strong>, or <strong>Upload / Change a Single File</strong>.</span></li>
+            <li><span class="howto-step-num">2</span><span class="howto-step-body">Review what changed on the Compare screen — added, modified and deleted files are labeled clearly. Tap any file to preview its diff.</span></li>
+            <li><span class="howto-step-num">3</span><span class="howto-step-body">Tap <strong>Review &amp; Commit</strong>, write a commit message, then tap <strong>Commit Everything</strong>.</span></li>
+          </ol>
+          <p class="hint">"Selected folder only" leaves files outside what you uploaded untouched. "Entire repository" mirrors the repo exactly, deleting anything not in your upload — use it with care.</p>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <span class="settings-icon howto-icon-5">5</span>
+            <div>
+              <div class="settings-section-title">Create a Brand-New Repository</div>
+            </div>
+          </div>
+          <ol class="howto-steps">
+            <li><span class="howto-step-num">1</span><span class="howto-step-body">Open the <strong>Custom</strong> tab at the top of the app.</span></li>
+            <li><span class="howto-step-num">2</span><span class="howto-step-body">Enter a repository name, choose Public or Private, and optionally attach a project ZIP to seed it with files right away.</span></li>
+            <li><span class="howto-step-num">3</span><span class="howto-step-body">Tap <strong>Create Repository</strong>. If the initial upload ever fails, tap <strong>Retry Upload</strong> — the repository is already created, so this just tries the push again.</span></li>
+          </ol>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <span class="settings-icon howto-icon-6">6</span>
+            <div>
+              <div class="settings-section-title">Everything Else</div>
+            </div>
+          </div>
+          <ol class="howto-steps">
+            <li><span class="howto-step-num">•</span><span class="howto-step-body">Tap <strong>Last Commit</strong> on the dashboard for full details on the last 5 commits — added, modified and deleted files, with +/- counts.</span></li>
+            <li><span class="howto-step-num">•</span><span class="howto-step-body">In the <strong>Custom</strong> tab, tap <strong>Browse Files</strong> on any repository to view, edit or delete individual files.</span></li>
+            <li><span class="howto-step-num">•</span><span class="howto-step-body">Tap <strong>Publish</strong> on a public repository to host it live with GitHub Pages.</span></li>
+            <li><span class="howto-step-num">•</span><span class="howto-step-body">Switch between GitHub accounts any time from <strong>Settings → Connected Accounts</strong>.</span></li>
+          </ol>
+        </div>
+
       </section>
 
     </main>
   </div>
 </div><!-- /app-shell -->
+
+<!-- New branch modal -->
+<div id="new-branch-modal" class="modal hidden">
+  <div class="modal-sheet small-sheet">
+    <div class="modal-header"><span>Create New Branch</span><button id="new-branch-modal-close" class="icon-btn">✕</button></div>
+    <div class="modal-body" style="padding:0 18px 4px">
+      <p class="hint" id="new-branch-base-hint" style="margin:0 0 12px">Branching off —</p>
+      <label class="field-label" for="new-branch-name-input" style="margin-top:0">Branch name</label>
+      <input type="text" id="new-branch-name-input" placeholder="feature/my-change" autocomplete="off" spellcheck="false">
+      <p id="new-branch-error" class="error-text hidden"></p>
+    </div>
+    <div class="modal-actions">
+      <button id="new-branch-cancel-btn" class="btn btn-secondary">Cancel</button>
+      <button id="new-branch-create-btn" class="btn btn-primary">Create Branch</button>
+    </div>
+  </div>
+</div>
 
 <!-- Picker sheet: custom, in-app popup for Repository/Branch selection —
      replaces the OS/browser native <select> dropdown with something that

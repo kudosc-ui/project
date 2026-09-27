@@ -22,8 +22,8 @@
   function friendlyError(err) {
     if (!err) return 'Something went wrong. Please try again.';
     if (err.kind === 'auth') return 'GitHub authentication expired. Please reconnect your GitHub account.';
-    if (err.kind === 'permission') return 'Permission denied. Check your token\'s scopes.';
-    if (err.kind === 'not_found') return 'Not found — it may have been renamed, deleted, or not exist yet.';
+    if (err.kind === 'permission') return 'Permission denied. If you\'re using a fine-grained token, make sure "Repository access" is set to "All repositories" and it has "Contents: Read and write" — otherwise a repo you just created isn\'t covered yet. A classic token with the "repo" scope always works.';
+    if (err.kind === 'not_found') return 'Not found. If this repo was just created and you\'re using a fine-grained token, it may not be included in that token\'s repository access yet — see Settings → How to Use for token setup.';
     if (err.kind === 'rate_limit') return 'GitHub API rate limit reached. Please wait a few minutes and try again.';
     if (err.kind === 'network') return 'Network error. Check your connection and try again.';
     if (err.kind === 'invalid') return err.message;
@@ -161,6 +161,27 @@
 
   // ---------------- Create repository ----------------
 
+  // Holds what's needed to retry just the "push files" half of repo
+  // creation, without recreating the repo (which now already exists).
+  let pendingRepoPush = null;
+
+  /**
+   * GitHub's repo record can exist (so creation "succeeds") a moment before
+   * its Git Data API (blobs/trees/commits) is actually ready to accept
+   * writes. Polling getRepo until it resolves cleanly, before the first
+   * write, is what stops that timing gap from turning into an empty repo.
+   */
+  async function waitForRepoReady(owner, name) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        await GitHub.getRepo(owner, name);
+        return;
+      } catch (e) {
+        await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+      }
+    }
+  }
+
   async function handleCreateRepo() {
     const nameInput = document.getElementById('new-repo-name');
     const name = nameInput.value.trim();
@@ -168,8 +189,11 @@
     const zipInput = document.getElementById('new-repo-zip-input');
     const zipFile = zipInput.files && zipInput.files[0];
     const errEl = document.getElementById('create-repo-error');
+    const retryBtn = document.getElementById('create-repo-retry-btn');
     const btn = document.getElementById('create-repo-btn');
     errEl.classList.add('hidden');
+    retryBtn.classList.add('hidden');
+    pendingRepoPush = null;
 
     if (!name) {
       errEl.textContent = 'Please enter a repository name.';
@@ -220,24 +244,16 @@
       const branch = repo.default_branch || 'main';
 
       if (fileMap && fileMap.size) {
-        setCreateProgress(45, 'Hashing files…', '');
-        const localHashes = new Map();
-        const entries = Array.from(fileMap.entries());
-        for (let i = 0; i < entries.length; i++) {
-          const [path, file] = entries[i];
-          const buf = await file.arrayBuffer();
-          localHashes.set(path, await Compare.gitBlobSha1(buf));
-          setCreateProgress(45 + Math.round(((i + 1) / entries.length) * 15), 'Hashing files…', `${i + 1} of ${entries.length}`);
+        try {
+          await pushInitialFiles({ repo, owner, branch, fileMap });
+        } catch (pushErr) {
+          // The repository itself was created successfully — only the
+          // upload failed. Keep everything needed to retry just the push,
+          // instead of forcing the person to delete the (now-empty) repo
+          // and start the whole thing over.
+          pendingRepoPush = { repo, owner, branch, fileMap, skipped, tooLarge };
+          throw pushErr;
         }
-        const diff = Compare.computeDiff(fileMap, localHashes, new Map(), 'repo', '');
-
-        await Commit.pushCommit({
-          owner, repo: repo.name, branch,
-          baseCommitSha: null, baseTreeSha: null,
-          diff, message: 'Initial commit via GitSync',
-          onProgress: (pct, label) => setCreateProgress(60 + Math.round(pct * 0.4), label, ''),
-          onFileResult: () => {}
-        });
       }
 
       setCreateProgress(100, 'Done', '');
@@ -249,9 +265,75 @@
       loadRepoList();
     } catch (e) {
       progressCard.classList.add('hidden');
-      errEl.textContent = friendlyError(e);
+      errEl.textContent = pendingRepoPush
+        ? `Repository created, but the upload failed: ${friendlyError(e)}`
+        : friendlyError(e);
       errEl.classList.remove('hidden');
+      retryBtn.classList.toggle('hidden', !pendingRepoPush);
     } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /** Hashes, diffs against an empty tree, and pushes fileMap as the repo's first commit. */
+  async function pushInitialFiles({ repo, owner, branch, fileMap }) {
+    // Give GitHub's Git Data API a moment to catch up with the repo record
+    // that createRepo() just returned — see waitForRepoReady() above.
+    setCreateProgress(38, 'Preparing repository…', '');
+    await waitForRepoReady(owner, repo.name);
+
+    setCreateProgress(45, 'Hashing files…', '');
+    const localHashes = new Map();
+    const entries = Array.from(fileMap.entries());
+    for (let i = 0; i < entries.length; i++) {
+      const [path, file] = entries[i];
+      const buf = await file.arrayBuffer();
+      localHashes.set(path, await Compare.gitBlobSha1(buf));
+      setCreateProgress(45 + Math.round(((i + 1) / entries.length) * 15), 'Hashing files…', `${i + 1} of ${entries.length}`);
+    }
+    const diff = Compare.computeDiff(fileMap, localHashes, new Map(), 'repo', '');
+
+    await Commit.pushCommit({
+      owner, repo: repo.name, branch,
+      baseCommitSha: null, baseTreeSha: null,
+      diff, message: 'Initial commit via GitSync',
+      onProgress: (pct, label) => setCreateProgress(60 + Math.round(pct * 0.4), label, ''),
+      onFileResult: () => {}
+    });
+  }
+
+  async function handleRetryRepoUpload() {
+    if (!pendingRepoPush) return;
+    const errEl = document.getElementById('create-repo-error');
+    const retryBtn = document.getElementById('create-repo-retry-btn');
+    const btn = document.getElementById('create-repo-btn');
+    const progressCard = document.getElementById('create-repo-progress-card');
+    const { repo, owner, branch, fileMap, skipped, tooLarge } = pendingRepoPush;
+
+    errEl.classList.add('hidden');
+    retryBtn.disabled = true;
+    btn.disabled = true;
+    progressCard.classList.remove('hidden');
+    setCreateProgress(35, 'Retrying upload…', '');
+
+    try {
+      await pushInitialFiles({ repo, owner, branch, fileMap });
+      setCreateProgress(100, 'Done', '');
+      progressCard.classList.add('hidden');
+      retryBtn.classList.add('hidden');
+      pendingRepoPush = null;
+      showCreateSuccess(repo, owner, branch, repo.private, skipped, tooLarge);
+      document.getElementById('new-repo-name').value = '';
+      document.getElementById('new-repo-zip-input').value = '';
+      state.repos = [];
+      loadRepoList();
+    } catch (e) {
+      progressCard.classList.add('hidden');
+      errEl.textContent = `Repository created, but the upload failed again: ${friendlyError(e)}`;
+      errEl.classList.remove('hidden');
+      retryBtn.classList.remove('hidden');
+    } finally {
+      retryBtn.disabled = false;
       btn.disabled = false;
     }
   }
@@ -514,6 +596,7 @@
     boot();
 
     document.getElementById('create-repo-btn').addEventListener('click', handleCreateRepo);
+    document.getElementById('create-repo-retry-btn').addEventListener('click', handleRetryRepoUpload);
     document.getElementById('custom-repo-search').addEventListener('input', renderRepoList);
     document.getElementById('repo-browser-close').addEventListener('click', () => {
       document.getElementById('repo-browser-card').classList.add('hidden');
