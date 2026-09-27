@@ -122,10 +122,14 @@ const Commit = (() => {
       // creating one throwaway blob and retrying *that* until it succeeds —
       // waits exactly as long as this repo needs instead of a guess, and
       // nothing proceeds until the API is genuinely ready to accept writes.
+      // During that same lag window GitHub sometimes answers 409 ("Git
+      // Repository is empty…") instead of 404, so 'conflict' is retried
+      // here too — it can't be a *real* conflict this early since a first
+      // commit has no existing ref for anything to conflict with.
       onProgress(2, 'Preparing first commit…');
       await withRetry(
         () => GitHub.createBlob(owner, repo, ''),
-        ['not_found', 'permission']
+        ['not_found', 'permission', 'conflict']
       );
     }
 
@@ -150,7 +154,7 @@ const Commit = (() => {
       (item) => withRetry(async () => {
         const content = await Files.readFileContent(item.file, item.path);
         return GitHub.createBlob(owner, repo, content.base64);
-      }, isInitialCommit ? ['not_found', 'permission'] : undefined),
+      }, isInitialCommit ? ['not_found', 'permission', 'conflict'] : undefined),
       (item, blob, err) => {
         if (err) {
           failures.push({ path: item.path, error: err });
@@ -207,7 +211,7 @@ const Commit = (() => {
     onProgress(93, 'Creating tree…');
     const newTree = await withRetry(
       () => GitHub.createTree(owner, repo, isInitialCommit ? null : baseTreeSha, treeEntries),
-      isInitialCommit ? ['not_found', 'permission'] : undefined
+      isInitialCommit ? ['not_found', 'permission', 'conflict'] : undefined
     );
 
     // 6. One final conflict check right before committing (not applicable to a first commit).
@@ -221,7 +225,7 @@ const Commit = (() => {
     onProgress(96, 'Creating commit…');
     const newCommit = await withRetry(
       () => GitHub.createCommit(owner, repo, message, newTree.sha, isInitialCommit ? null : baseCommitSha),
-      isInitialCommit ? ['not_found', 'permission'] : undefined
+      isInitialCommit ? ['not_found', 'permission', 'conflict'] : undefined
     );
 
     // 8. Point the branch at the new commit. A brand-new repo has no ref yet,
@@ -230,7 +234,7 @@ const Commit = (() => {
     // line of defense.
     onProgress(98, 'Updating branch…');
     if (isInitialCommit) {
-      await withRetry(() => GitHub.createRef(owner, repo, branch, newCommit.sha), ['not_found', 'permission']);
+      await withRetry(() => GitHub.createRef(owner, repo, branch, newCommit.sha), ['not_found', 'permission', 'conflict']);
     } else {
       await withRetry(() => GitHub.updateRef(owner, repo, branch, newCommit.sha, false));
     }
