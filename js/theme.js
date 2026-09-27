@@ -24,6 +24,9 @@
       btn.setAttribute('aria-label', theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme');
       btn.title = theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
     });
+    document.querySelectorAll('.theme-switch-opt').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.themeChoice === theme);
+    });
   }
 
   function toggleTheme() {
@@ -34,6 +37,9 @@
     updateLabels(currentTheme());
     document.querySelectorAll('.theme-toggle').forEach(function (btn) {
       btn.addEventListener('click', toggleTheme);
+    });
+    document.querySelectorAll('.theme-switch-opt').forEach(function (btn) {
+      btn.addEventListener('click', function () { applyTheme(btn.dataset.themeChoice); });
     });
   });
 })();

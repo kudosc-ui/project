@@ -37,7 +37,6 @@
 <div id="app-shell">
 
   <header class="navbar">
-    <div class="navbar-brand"><span class="logo-badge"><img src="icons/icon-96.png" alt="" width="28" height="28"></span> GitSync</div>
     <nav class="navbar-links">
       <a href="index.html" class="navbar-link">Home</a>
       <a href="custom.html" class="navbar-link active">Custom</a>
@@ -47,7 +46,9 @@
         <svg class="theme-icon icon-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
         <svg class="theme-icon icon-moon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
       </button>
-      <button id="accounts-toggle" class="icon-btn" title="Accounts">⚙️</button>
+      <button id="accounts-toggle" class="icon-btn" title="Accounts" aria-label="Accounts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="19" height="19"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
     </div>
   </header>
 
@@ -103,6 +104,7 @@
         <div class="card-title">Repository Created</div>
         <div id="create-repo-result-name" class="commit-msg">—</div>
         <a id="create-repo-result-link" class="btn-link" href="#" target="_blank" rel="noopener">Open on GitHub ↗</a>
+        <p id="create-repo-skip-note" class="hint hidden" style="margin-top:8px"></p>
         <button id="enable-pages-btn" class="btn btn-secondary btn-block hidden" style="margin-top:12px">Host with GitHub Pages</button>
         <div id="pages-result-row" class="hidden" style="margin-top:10px">
           <div class="field-label" style="margin-top:0">Live URL</div>
@@ -212,7 +214,25 @@
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('service-worker.js').catch(function () { /* ignore */ });
+    navigator.serviceWorker.register('service-worker.js').then(function (reg) {
+      if (reg.waiting) reg.waiting.postMessage('skipWaiting');
+      reg.addEventListener('updatefound', function () {
+        var fresh = reg.installing;
+        if (!fresh) return;
+        fresh.addEventListener('statechange', function () {
+          if (fresh.state === 'installed' && navigator.serviceWorker.controller) {
+            fresh.postMessage('skipWaiting');
+          }
+        });
+      });
+    }).catch(function () { /* ignore */ });
+
+    var reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (reloaded) return;
+      reloaded = true;
+      window.location.reload();
+    });
   });
 }
 </script>

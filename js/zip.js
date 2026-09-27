@@ -37,7 +37,12 @@ const ZipHandler = (() => {
       throw new Error(`This ZIP has more than ${Files.MAX_TOTAL_FILES} files. Please use a smaller archive.`);
     }
 
-    const normalizedPaths = entries.map(e => e.name.split('/').filter(Boolean).join('/'));
+    // Some zip tools (mainly older Windows utilities) store entry names with
+    // backslashes instead of forward slashes. Without this, every file in
+    // such an archive would be treated as an unsafe path and silently
+    // skipped — the archive would "extract" with zero usable files and the
+    // resulting repository would be created empty with no clear error.
+    const normalizedPaths = entries.map(e => e.name.replace(/\\/g, '/').split('/').filter(Boolean).join('/'));
     let rootName = detectSharedRoot(normalizedPaths);
 
     const fileMap = new Map();

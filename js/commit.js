@@ -6,6 +6,56 @@
 
 const Commit = (() => {
 
+  const UPLOAD_CONCURRENCY = 4; // parallel blob uploads — fast, but gentle enough to avoid secondary rate limits
+  const MAX_RETRIES = 4;
+
+  function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+
+  /**
+   * Retries a transient failure (rate limit / network hiccup) with backoff.
+   * Anything else (auth, permission, invalid, not_found) fails immediately —
+   * retrying those would only waste time.
+   */
+  async function withRetry(fn) {
+    let attempt = 0;
+    while (true) {
+      try {
+        return await fn();
+      } catch (e) {
+        attempt++;
+        const retryable = e && (e.kind === 'rate_limit' || e.kind === 'network');
+        if (!retryable || attempt > MAX_RETRIES) throw e;
+        const wait = e.retryAfter ? e.retryAfter * 1000 : Math.min(1000 * Math.pow(2, attempt - 1), 12000);
+        await sleep(wait);
+      }
+    }
+  }
+
+  /**
+   * Runs `worker` over `items` with at most `limit` in flight at once,
+   * calling onItemDone(item, result|null, error|null) as each settles.
+   * Larger projects (many files across multiple folders) finish faster than
+   * fully sequential uploads, without hammering the API hard enough to
+   * trigger a secondary rate limit.
+   */
+  async function runPool(items, limit, worker, onItemDone) {
+    let i = 0;
+    async function next() {
+      while (i < items.length) {
+        const idx = i++;
+        const item = items[idx];
+        try {
+          const result = await worker(item);
+          onItemDone(item, result, null);
+        } catch (e) {
+          onItemDone(item, null, e);
+        }
+      }
+    }
+    const runners = Array.from({ length: Math.min(limit, items.length) }, next);
+    await Promise.all(runners);
+  }
+
   /**
    * Captures the branch's current state before the user starts reviewing,
    * so we can detect if anyone else pushes in the meantime.
@@ -67,21 +117,36 @@ const Commit = (() => {
       onProgress(Math.min(95, Math.round((done / total) * 90) + 2), label);
     };
 
-    // 2. Create blobs for every added/modified file, independently.
-    const treeEntries = [];
+    // 2. Create blobs for every added/modified file, independently, with
+    // limited concurrency and automatic retry on transient failures (rate
+    // limits, network hiccups) — this is what keeps larger projects (many
+    // files spread across several folders) reliable instead of failing
+    // partway through a long sequential upload.
+    const blobResults = new Map(); // path -> sha
     const failures = [];
-    for (const item of changed) {
-      try {
+    await runPool(
+      changed,
+      UPLOAD_CONCURRENCY,
+      (item) => withRetry(async () => {
         const content = await Files.readFileContent(item.file, item.path);
-        const blob = await GitHub.createBlob(owner, repo, content.base64);
-        treeEntries.push({ path: item.path, mode: '100644', type: 'blob', sha: blob.sha });
-        onFileResult({ path: item.path, status: 'success' });
-      } catch (e) {
-        failures.push({ path: item.path, error: e });
-        onFileResult({ path: item.path, status: 'failed', error: e.message || 'Upload failed' });
+        return GitHub.createBlob(owner, repo, content.base64);
+      }),
+      (item, blob, err) => {
+        if (err) {
+          failures.push({ path: item.path, error: err });
+          onFileResult({ path: item.path, status: 'failed', error: err.message || 'Upload failed' });
+        } else {
+          blobResults.set(item.path, blob.sha);
+          onFileResult({ path: item.path, status: 'success' });
+        }
+        bump(`Uploading ${item.path}`);
       }
-      bump(`Uploading ${item.path}`);
-    }
+    );
+    // Preserve a stable, deterministic tree order regardless of which
+    // parallel upload happened to finish first.
+    const treeEntries = changed
+      .filter((item) => blobResults.has(item.path))
+      .map((item) => ({ path: item.path, mode: '100644', type: 'blob', sha: blobResults.get(item.path) }));
 
     // 3. Mark deletions by omitting them with sha:null in the tree. No
     // network call is needed per-file here — the deletion is realized when
@@ -104,7 +169,7 @@ const Commit = (() => {
 
     // 5. Build the new tree. A brand-new repo has no base tree to build on.
     onProgress(93, 'Creating tree…');
-    const newTree = await GitHub.createTree(owner, repo, isInitialCommit ? null : baseTreeSha, treeEntries);
+    const newTree = await withRetry(() => GitHub.createTree(owner, repo, isInitialCommit ? null : baseTreeSha, treeEntries));
 
     // 6. One final conflict check right before committing (not applicable to a first commit).
     if (!isInitialCommit && await hasConflict(owner, repo, branch, baseCommitSha)) {
@@ -115,7 +180,7 @@ const Commit = (() => {
 
     // 7. Create the commit object. A first commit has no parent.
     onProgress(96, 'Creating commit…');
-    const newCommit = await GitHub.createCommit(owner, repo, message, newTree.sha, isInitialCommit ? null : baseCommitSha);
+    const newCommit = await withRetry(() => GitHub.createCommit(owner, repo, message, newTree.sha, isInitialCommit ? null : baseCommitSha));
 
     // 8. Point the branch at the new commit. A brand-new repo has no ref yet,
     // so it must be created rather than updated; force:false on the update
@@ -123,9 +188,9 @@ const Commit = (() => {
     // line of defense.
     onProgress(98, 'Updating branch…');
     if (isInitialCommit) {
-      await GitHub.createRef(owner, repo, branch, newCommit.sha);
+      await withRetry(() => GitHub.createRef(owner, repo, branch, newCommit.sha));
     } else {
-      await GitHub.updateRef(owner, repo, branch, newCommit.sha, false);
+      await withRetry(() => GitHub.updateRef(owner, repo, branch, newCommit.sha, false));
     }
 
     onProgress(100, 'Done');

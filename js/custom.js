@@ -103,11 +103,60 @@
         <div class="repo-row-actions">
           <button class="btn-link small" data-action="browse">Browse Files</button>
           <a class="btn-link small" href="${repo.html_url}" target="_blank" rel="noopener">Open on GitHub ↗</a>
+          ${!repo.private ? '<button class="btn-link small" data-action="publish">Publish ↗</button>' : ''}
         </div>
+        <div class="publish-row hidden" data-role="publish-row"></div>
       `;
       row.querySelector('[data-action="browse"]').addEventListener('click', () => browseRepo(repo.full_name));
+      const publishBtn = row.querySelector('[data-action="publish"]');
+      if (publishBtn) publishBtn.addEventListener('click', () => handlePublishRepoRow(repo, publishBtn, row.querySelector('[data-role="publish-row"]')));
       container.appendChild(row);
     }
+  }
+
+  // ---------------- Publish (GitHub Pages) for any existing public repo ----------------
+
+  async function handlePublishRepoRow(repo, btn, resultRow) {
+    const { owner, repo: repoName } = splitFullName(repo.full_name);
+    const branch = repo.default_branch || 'main';
+    btn.disabled = true;
+    const original = btn.textContent;
+
+    // If Pages is already enabled for this repo, just show the live link.
+    try {
+      const pages = await GitHub.getPages(owner, repoName);
+      const url = pages.html_url || `https://${owner}.github.io/${repoName === `${owner}.github.io` ? '' : repoName + '/'}`;
+      revealPublishLink(resultRow, url);
+      btn.textContent = 'Published ✓';
+      return;
+    } catch (e) {
+      // 404 = not enabled yet, fall through and enable it below.
+      if (e.kind && e.kind !== 'not_found') {
+        btn.disabled = false;
+        UI.toast(friendlyError(e));
+        return;
+      }
+    }
+
+    btn.textContent = 'Publishing…';
+    try {
+      await GitHub.enablePages(owner, repoName, branch, '/');
+      const url = repoName.toLowerCase() === `${owner.toLowerCase()}.github.io`
+        ? `https://${owner}.github.io/`
+        : `https://${owner}.github.io/${repoName}/`;
+      revealPublishLink(resultRow, url);
+      btn.textContent = 'Published ✓';
+      UI.toast('GitHub Pages enabled — it may take a minute to go live.');
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = original;
+      UI.toast(friendlyError(e) || 'Could not enable GitHub Pages for this repository.');
+    }
+  }
+
+  function revealPublishLink(resultRow, url) {
+    resultRow.classList.remove('hidden');
+    resultRow.innerHTML = `Live at <a href="${url}" target="_blank" rel="noopener">${UI.escapeHtml(url)}</a>`;
   }
 
   // ---------------- Create repository ----------------
@@ -137,47 +186,63 @@
     document.getElementById('create-repo-success-card').classList.add('hidden');
     const progressCard = document.getElementById('create-repo-progress-card');
     progressCard.classList.remove('hidden');
-    setCreateProgress(5, 'Creating repository…', '');
+    setCreateProgress(5, zipFile ? 'Reading ZIP file…' : 'Creating repository…', '');
 
     try {
+      // Extract & validate the ZIP *before* creating the repository. This
+      // matters most for archives with several top-level folders (larger
+      // projects) — if anything about the archive is unreadable we find out
+      // now and never leave behind an empty repo with a confusing "success"
+      // that actually pushed nothing.
+      let fileMap = null, skipped = [], tooLarge = [];
+      if (zipFile) {
+        const extracted = await ZipHandler.extractZip(
+          zipFile,
+          (pct, detail) => setCreateProgress(5 + Math.round(pct * 0.25), 'Extracting ZIP file…', detail)
+        );
+        fileMap = extracted.fileMap;
+        skipped = extracted.skipped;
+        tooLarge = extracted.tooLarge;
+
+        if (!fileMap.size) {
+          const reason = skipped.length || tooLarge.length
+            ? 'every file inside it was skipped (unsafe/duplicate paths or over the size limit).'
+            : 'no files were found inside it.';
+          const err = new Error(`This ZIP couldn't be used — ${reason}`);
+          err.kind = 'invalid';
+          throw err;
+        }
+      }
+
+      setCreateProgress(32, 'Creating repository…', '');
       const repo = await GitHub.createRepo(name, isPrivate);
       const owner = repo.owner.login;
       const branch = repo.default_branch || 'main';
 
-      if (zipFile) {
-        setCreateProgress(15, 'Extracting ZIP file…', '');
-        const { fileMap, skipped, tooLarge } = await ZipHandler.extractZip(
-          zipFile,
-          (pct, detail) => setCreateProgress(15 + Math.round(pct * 0.25), 'Extracting ZIP file…', detail)
-        );
-        if (skipped.length) UI.toast(`${skipped.length} file(s) skipped (unsafe path or duplicate).`);
-        if (tooLarge.length) UI.toast(`${tooLarge.length} file(s) skipped (exceeds size limit).`);
-
-        if (fileMap.size) {
-          setCreateProgress(45, 'Hashing files…', '');
-          const localHashes = new Map();
-          const entries = Array.from(fileMap.entries());
-          for (let i = 0; i < entries.length; i++) {
-            const [path, file] = entries[i];
-            const buf = await file.arrayBuffer();
-            localHashes.set(path, await Compare.gitBlobSha1(buf));
-            setCreateProgress(45 + Math.round(((i + 1) / entries.length) * 15), 'Hashing files…', `${i + 1} of ${entries.length}`);
-          }
-          const diff = Compare.computeDiff(fileMap, localHashes, new Map(), 'repo', '');
-
-          await Commit.pushCommit({
-            owner, repo: repo.name, branch,
-            baseCommitSha: null, baseTreeSha: null,
-            diff, message: 'Initial commit via GitSync',
-            onProgress: (pct, label) => setCreateProgress(60 + Math.round(pct * 0.4), label, ''),
-            onFileResult: () => {}
-          });
+      if (fileMap && fileMap.size) {
+        setCreateProgress(45, 'Hashing files…', '');
+        const localHashes = new Map();
+        const entries = Array.from(fileMap.entries());
+        for (let i = 0; i < entries.length; i++) {
+          const [path, file] = entries[i];
+          const buf = await file.arrayBuffer();
+          localHashes.set(path, await Compare.gitBlobSha1(buf));
+          setCreateProgress(45 + Math.round(((i + 1) / entries.length) * 15), 'Hashing files…', `${i + 1} of ${entries.length}`);
         }
+        const diff = Compare.computeDiff(fileMap, localHashes, new Map(), 'repo', '');
+
+        await Commit.pushCommit({
+          owner, repo: repo.name, branch,
+          baseCommitSha: null, baseTreeSha: null,
+          diff, message: 'Initial commit via GitSync',
+          onProgress: (pct, label) => setCreateProgress(60 + Math.round(pct * 0.4), label, ''),
+          onFileResult: () => {}
+        });
       }
 
       setCreateProgress(100, 'Done', '');
       progressCard.classList.add('hidden');
-      showCreateSuccess(repo, owner, branch, isPrivate);
+      showCreateSuccess(repo, owner, branch, isPrivate, skipped, tooLarge);
       nameInput.value = '';
       zipInput.value = '';
       state.repos = []; // force a refresh next time the list is viewed
@@ -198,11 +263,23 @@
     if (detail != null) document.getElementById('create-repo-progress-detail').textContent = detail;
   }
 
-  function showCreateSuccess(repo, owner, branch, isPrivate) {
+  function showCreateSuccess(repo, owner, branch, isPrivate, skipped, tooLarge) {
     const card = document.getElementById('create-repo-success-card');
     card.classList.remove('hidden');
     document.getElementById('create-repo-result-name').textContent = repo.full_name;
     document.getElementById('create-repo-result-link').href = repo.html_url;
+
+    const noteEl = document.getElementById('create-repo-skip-note');
+    const skipCount = (skipped || []).length, largeCount = (tooLarge || []).length;
+    if (skipCount || largeCount) {
+      const bits = [];
+      if (skipCount) bits.push(`${skipCount} file(s) skipped (unsafe or duplicate path)`);
+      if (largeCount) bits.push(`${largeCount} file(s) skipped (over the size limit)`);
+      noteEl.textContent = bits.join(' · ');
+      noteEl.classList.remove('hidden');
+    } else {
+      noteEl.classList.add('hidden');
+    }
 
     document.getElementById('pages-result-row').classList.add('hidden');
     const pagesBtn = document.getElementById('enable-pages-btn');

@@ -55,7 +55,6 @@
 <div id="app-shell" class="hidden">
 
   <header class="navbar">
-    <div class="navbar-brand"><span class="logo-badge"><img src="icons/icon-96.png" alt="" width="28" height="28"></span> GitSync</div>
     <nav class="navbar-links">
       <a href="index.html" class="navbar-link active">Home</a>
       <a href="custom.html" class="navbar-link">Custom</a>
@@ -65,7 +64,9 @@
         <svg class="theme-icon icon-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
         <svg class="theme-icon icon-moon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
       </button>
-      <button id="settings-toggle" class="icon-btn" title="Settings & Accounts">⚙️</button>
+      <button id="settings-toggle" class="icon-btn" title="Settings & Accounts" aria-label="Settings & Accounts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="19" height="19"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
     </div>
   </header>
 
@@ -256,18 +257,37 @@
 
       <!-- ============ SETTINGS VIEW ============ -->
       <section id="view-settings" class="view">
-        <div class="card">
-          <div class="card-title">Connected Accounts</div>
+
+        <div class="card settings-card">
+          <div class="settings-section-head">
+            <span class="settings-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            </span>
+            <div>
+              <div class="settings-section-title">Connected Accounts</div>
+              <div class="settings-section-sub">Switch instantly between GitHub accounts</div>
+            </div>
+          </div>
           <div id="accounts-list"></div>
           <div class="add-account-row">
             <input type="password" id="add-account-token" placeholder="Paste another GitHub token…" autocomplete="off">
             <button id="add-account-btn" class="btn btn-secondary">Add Account</button>
           </div>
           <p id="add-account-error" class="error-text hidden"></p>
-          <p class="hint">Tokens are stored in this browser only, so you can switch accounts instantly. Remove any account at any time.</p>
+          <p class="hint">Tokens are stored in this browser only. Remove any account at any time.</p>
         </div>
 
-        <div class="card">
+        <div class="card settings-card">
+          <div class="settings-section-head">
+            <span class="settings-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            </span>
+            <div>
+              <div class="settings-section-title">Sync Defaults</div>
+              <div class="settings-section-sub">Applied the next time you open the dashboard</div>
+            </div>
+          </div>
+
           <label class="field-label">Default Repository</label>
           <div id="settings-default-repo" class="static-value">—</div>
 
@@ -275,15 +295,32 @@
           <div id="settings-default-branch" class="static-value">—</div>
 
           <label class="field-label">Sync Mode</label>
-          <div class="radio-row">
-            <label><input type="radio" name="settings-sync-mode" value="repo"> Entire repository</label>
-            <label><input type="radio" name="settings-sync-mode" value="folder"> Selected folder only</label>
+          <div class="radio-row settings-radio-row">
+            <label><input type="radio" name="settings-sync-mode" value="repo"> <span>Entire repository</span></label>
+            <label><input type="radio" name="settings-sync-mode" value="folder"> <span>Selected folder only</span></label>
+          </div>
+        </div>
+
+        <div class="card settings-card">
+          <div class="settings-section-head">
+            <span class="settings-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>
+            </span>
+            <div>
+              <div class="settings-section-title">Appearance</div>
+              <div class="settings-section-sub">Applies everywhere in the app, instantly</div>
+            </div>
           </div>
 
-          <label class="field-label">Theme</label>
-          <div class="theme-settings-row">
-            <div class="static-value js-theme-label">Dark</div>
-            <button id="settings-theme-toggle" class="btn btn-secondary theme-toggle" type="button">Toggle</button>
+          <div class="theme-switch" id="settings-theme-switch">
+            <button type="button" class="theme-switch-opt" data-theme-choice="light">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+              <span>Light</span>
+            </button>
+            <button type="button" class="theme-switch-opt" data-theme-choice="dark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+              <span>Dark</span>
+            </button>
           </div>
         </div>
       </section>
@@ -334,7 +371,28 @@
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('service-worker.js').catch(function () { /* ignore */ });
+    navigator.serviceWorker.register('service-worker.js').then(function (reg) {
+      // If an updated worker is already waiting (e.g. this tab was open
+      // during an update), activate it right away instead of leaving the
+      // page on stale assets until the tab is closed and reopened.
+      if (reg.waiting) reg.waiting.postMessage('skipWaiting');
+      reg.addEventListener('updatefound', function () {
+        var fresh = reg.installing;
+        if (!fresh) return;
+        fresh.addEventListener('statechange', function () {
+          if (fresh.state === 'installed' && navigator.serviceWorker.controller) {
+            fresh.postMessage('skipWaiting');
+          }
+        });
+      });
+    }).catch(function () { /* ignore */ });
+
+    var reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (reloaded) return;
+      reloaded = true;
+      window.location.reload();
+    });
   });
 }
 </script>

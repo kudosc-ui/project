@@ -37,10 +37,20 @@ const GitHub = (() => {
     }
     if (res.status === 403) {
       const remaining = res.headers.get('x-ratelimit-remaining');
-      const err = new Error(remaining === '0'
-        ? 'GitHub API rate limit reached. Please wait a few minutes and try again.'
+      const retryAfterHeader = res.headers.get('retry-after');
+      const body = await res.json().catch(() => ({}));
+      // GitHub returns 403 both for "out of quota" (x-ratelimit-remaining:0)
+      // AND for its separate, unlabeled "secondary rate limit" (too many
+      // requests too quickly — e.g. many files uploaded back-to-back from a
+      // large multi-folder project). Both are transient and worth retrying;
+      // a real permission problem is neither.
+      const isSecondary = /secondary rate limit|abuse detection|too many requests/i.test(body.message || '');
+      const isRateLimit = remaining === '0' || isSecondary || !!retryAfterHeader;
+      const err = new Error(isRateLimit
+        ? (body.message || 'GitHub API rate limit reached. Please wait a few minutes and try again.')
         : 'Permission denied for this action on GitHub.');
-      err.kind = remaining === '0' ? 'rate_limit' : 'permission';
+      err.kind = isRateLimit ? 'rate_limit' : 'permission';
+      if (retryAfterHeader) err.retryAfter = parseInt(retryAfterHeader, 10);
       throw err;
     }
     if (res.status === 404) {

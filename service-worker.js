@@ -2,9 +2,19 @@
    Caches the static app shell (HTML/CSS/JS/icons) so the app installs and
    opens instantly, offline included. GitHub API calls and third-party
    scripts are always fetched live and are never intercepted here — syncing
-   itself always needs a real network connection. */
+   itself always needs a real network connection.
 
-const CACHE_VERSION = 'gitsync-v1';
+   Strategy: NETWORK-FIRST for the app shell. Whenever the device is online,
+   the latest HTML/CSS/JS is always used (and the cache is refreshed with
+   it) — a stale cached style.css or bundle can never "stick" and silently
+   keep an old build (theme colors, icons, script fixes, etc.) around after
+   an update. The cache is only used as an offline fallback.
+
+   IMPORTANT: bump CACHE_VERSION whenever the app shell changes. Bumping it
+   guarantees the old cache is deleted on activate, so nothing from a
+   previous build can linger even in edge cases. */
+
+const CACHE_VERSION = 'gitsync-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -52,10 +62,18 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(
+        // Delete every cache that isn't the current version — this is what
+        // actually clears out a stale build the moment a new one activates.
         keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key))
       ))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  // Lets the page force an immediate takeover after it detects a waiting
+  // worker, instead of waiting for every tab to close.
+  if (event.data === 'skipWaiting') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -69,17 +87,14 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(req).then((cached) => {
-      const network = fetch(req)
-        .then((res) => {
-          if (res && res.status === 200) {
-            const copy = res.clone();
-            caches.open(CACHE_VERSION).then((cache) => cache.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+    fetch(req)
+      .then((res) => {
+        if (res && res.status === 200) {
+          const copy = res.clone();
+          caches.open(CACHE_VERSION).then((cache) => cache.put(req, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(req))
   );
 });
