@@ -47,8 +47,13 @@ const Picker = (() => {
         ${item.selected ? '<span class="picker-item-check">✓</span>' : ''}
       `;
       row.addEventListener('click', () => {
+        // Capture the callback before close() clears it — otherwise the
+        // selection is silently dropped and the sheet just closes with
+        // nothing changed.
+        const selectCallback = onPick;
+        const value = item.value;
         close();
-        if (onPick) onPick(item.value);
+        if (selectCallback) selectCallback(value);
       });
       list.appendChild(row);
     }
