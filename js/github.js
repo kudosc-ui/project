@@ -169,13 +169,20 @@ const GitHub = (() => {
   // ---- Repository creation & metadata ----
 
   function createRepo(name, isPrivate, description) {
+    // auto_init: true makes GitHub create the initial commit + branch ref
+    // as part of repo creation itself, atomically. That removes the race
+    // window where the repo record exists but its Git internals (blobs,
+    // trees, refs) aren't ready yet — the source of the old "repository is
+    // empty / reference could not be resolved" failures on a fresh repo.
+    // Any placeholder file GitHub adds is simply diffed away (or overwritten)
+    // by the first real push, same as any other file changed since baseline.
     return request('/user/repos', {
       method: 'POST',
       body: JSON.stringify({
         name,
         private: !!isPrivate,
         description: description || '',
-        auto_init: false
+        auto_init: true
       })
     });
   }

@@ -177,10 +177,17 @@
    * writes. Polling getRepo until it resolves cleanly, before the first
    * write, is what stops that timing gap from turning into an empty repo.
    */
-  async function waitForRepoReady(owner, name) {
+  /**
+   * Polls for the thing the push actually needs — the branch ref existing —
+   * rather than just the repo record existing. With auto_init:true this
+   * resolves almost immediately since GitHub creates the ref as part of
+   * repo creation, but this keeps a small safety margin for that write to
+   * become visible.
+   */
+  async function waitForRepoReady(owner, name, branch) {
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        await GitHub.getRepo(owner, name);
+        await GitHub.getRef(owner, name, branch);
         return;
       } catch (e) {
         await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
@@ -281,12 +288,24 @@
     }
   }
 
-  /** Hashes, diffs against an empty tree, and pushes fileMap as the repo's first commit. */
+  /**
+   * Hashes the uploaded files, diffs them against the real baseline GitHub
+   * just created (via auto_init:true — a placeholder commit + branch ref
+   * already exist), and pushes the result as a normal commit.
+   *
+   * This is deliberately the *same* update path every later push in the app
+   * uses (Commit.pushCommit with a real baseCommitSha/baseTreeSha) — not the
+   * special "isInitialCommit" branch. There's no longer a from-scratch repo
+   * with no ref to race against, so there's nothing special about this push;
+   * treating it as an ordinary update is what makes it reliable.
+   */
   async function pushInitialFiles({ repo, owner, branch, fileMap }) {
-    // Give GitHub's Git Data API a moment to catch up with the repo record
-    // that createRepo() just returned — see waitForRepoReady() above.
+    // Give the branch ref a moment to become visible — see waitForRepoReady().
     setCreateProgress(38, 'Preparing repository…', '');
-    await waitForRepoReady(owner, repo.name);
+    await waitForRepoReady(owner, repo.name, branch);
+
+    setCreateProgress(42, 'Fetching repository state…', '');
+    const baseline = await Commit.captureBaseline(owner, repo.name, branch);
 
     setCreateProgress(45, 'Hashing files…', '');
     const localHashes = new Map();
@@ -297,11 +316,15 @@
       localHashes.set(path, await Compare.gitBlobSha1(buf));
       setCreateProgress(45 + Math.round(((i + 1) / entries.length) * 15), 'Hashing files…', `${i + 1} of ${entries.length}`);
     }
-    const diff = Compare.computeDiff(fileMap, localHashes, new Map(), 'repo', '');
+    // 'repo' sync mode: the uploaded ZIP is meant to be the whole project,
+    // so anything GitHub auto-created (e.g. a placeholder README) that isn't
+    // also in the ZIP is removed, same as any other full-repo sync.
+    const remoteMap = Compare.buildRemoteFileMap(baseline.fullTree);
+    const diff = Compare.computeDiff(fileMap, localHashes, remoteMap, 'repo', '');
 
     await Commit.pushCommit({
       owner, repo: repo.name, branch,
-      baseCommitSha: null, baseTreeSha: null,
+      baseCommitSha: baseline.baseCommitSha, baseTreeSha: baseline.baseTreeSha,
       diff, message: 'Initial commit via GitSync',
       onProgress: (pct, label) => setCreateProgress(60 + Math.round(pct * 0.4), label, ''),
       onFileResult: () => {}
