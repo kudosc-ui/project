@@ -15,6 +15,7 @@
     uploadedRootName: '',
     localHashes: null,           // Map<path, sha1hex>
     baseline: null,              // { baseCommitSha, baseTreeSha, fullTree }
+    lastCommitInfo: null,        // full commit payload (incl. files[]) for the last-commit row
     diff: null,
     filter: 'all',
     searchTerm: ''
@@ -155,10 +156,20 @@
     const { owner, repo } = splitFullName(state.currentRepoFullName);
     try {
       const commitInfo = await GitHub.getLatestCommitForBranch(owner, repo, state.currentBranch);
+      state.lastCommitInfo = commitInfo;
       UI.renderLastCommit(card, msgEl, metaEl, commitInfo);
     } catch (e) {
+      state.lastCommitInfo = null;
       card.style.display = 'none';
     }
+  }
+
+  // ---------------- Last commit → file list ----------------
+
+  function handleLastCommitClick() {
+    if (!state.lastCommitInfo) return;
+    UI.showView('view-commit-files');
+    UI.renderCommitFilesList(state.lastCommitInfo);
   }
 
   // ---------------- Upload flow ----------------
@@ -512,6 +523,10 @@
 
     document.getElementById('back-to-dashboard-btn').addEventListener('click', resetToDashboard);
     document.getElementById('conflict-back-btn').addEventListener('click', resetToDashboard);
+
+    document.getElementById('last-commit-card').addEventListener('click', handleLastCommitClick);
+    document.getElementById('commit-files-back-btn').addEventListener('click', resetToDashboard);
+    document.getElementById('settings-back-btn').addEventListener('click', resetToDashboard);
 
     document.getElementById('diff-modal-close').addEventListener('click', UI.closeDiffModal);
     document.getElementById('diff-modal').addEventListener('click', (e) => {

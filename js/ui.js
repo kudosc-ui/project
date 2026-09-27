@@ -147,6 +147,43 @@ const UI = (() => {
     }
   }
 
+  /**
+   * Renders the file list for the repo's last commit (from the GitHub
+   * "get a commit" response, which includes a files[] array).
+   */
+  function renderCommitFilesList(commitInfo) {
+    const subtitle = document.getElementById('commit-files-subtitle');
+    const container = document.getElementById('commit-files-list');
+    const firstLine = (commitInfo.commit.message || '').split('\n')[0];
+    subtitle.textContent = `${firstLine || '(no message)'} · ${commitInfo.sha.slice(0, 7)}`;
+
+    const files = commitInfo.files || [];
+    container.innerHTML = '';
+    if (!files.length) {
+      container.innerHTML = '<div class="hint" style="padding:16px 0">No file details available for this commit.</div>';
+      return;
+    }
+    for (const f of files) {
+      const status = commitFileStatus(f.status);
+      const row = document.createElement('div');
+      row.className = 'file-row';
+      row.innerHTML = `
+        <div class="file-row-top">
+          <span class="status-badge ${status}">${badgeLabel(status)}</span>
+          <span class="file-path">${escapeHtml(f.filename)}</span>
+        </div>
+        <div class="commit-file-stat"><span class="add-stat">+${f.additions ?? 0}</span> <span class="del-stat">-${f.deletions ?? 0}</span></div>
+      `;
+      container.appendChild(row);
+    }
+  }
+
+  function commitFileStatus(githubStatus) {
+    if (githubStatus === 'added') return 'added';
+    if (githubStatus === 'removed') return 'deleted';
+    return 'modified'; // modified, renamed, copied, changed
+  }
+
   function badgeLabel(status) {
     return { added: 'ADDED', modified: 'MODIFIED', deleted: 'DELETED', unchanged: 'UNCHANGED' }[status] || status.toUpperCase();
   }
@@ -226,7 +263,7 @@ const UI = (() => {
 
   return {
     showView, setNavActive, toast, confirm, setProgress,
-    renderRepoOptions, renderBranchOptions, renderLastCommit,
+    renderRepoOptions, renderBranchOptions, renderLastCommit, renderCommitFilesList,
     renderSummaryCounts, renderDeletionsWarning, renderFileList,
     openDiffModal, closeDiffModal, renderDiffOps, escapeHtml,
     initSyncResultsList, setSyncResultStatus, renderSyncSummary

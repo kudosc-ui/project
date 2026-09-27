@@ -256,6 +256,7 @@ html[data-theme="light"] .theme-toggle .icon-moon{display:block;}
   color:#fff;
 }
 .logo-badge img{width:100%; height:100%; object-fit:cover; display:block;}
+.navbar-logo{width:30px; height:30px; border-radius:9px;}
 .navbar-links{
   display:flex; gap:2px; background:var(--surface-2);
   padding:3px; border-radius:10px; border:1px solid var(--border);
@@ -310,27 +311,138 @@ html[data-theme="light"] .theme-toggle .icon-moon{display:block;}
 .dot-green{background:var(--green);}
 .connected-row .btn-link{margin-left:auto;}
 .static-value{padding:9px 0; color:var(--text); font-size:14.5px;}
+.flat-row{padding:2px 2px 18px; margin-bottom:0;}
 
-/* ---------- Upload CTA ---------- */
-.upload-cta{
-  width:100%; padding:28px 16px; border-radius:var(--radius);
-  background:var(--surface); border:1.5px dashed var(--border);
-  color:var(--accent); font-size:16px; font-weight:700; cursor:pointer; font-family:inherit;
-  display:flex; align-items:center; justify-content:center; gap:10px;
-  margin-bottom:14px; transition:border-color .18s var(--ease), background .18s var(--ease), transform .15s var(--ease), box-shadow .2s var(--ease);
+/* ---------- Dashboard: full-bleed panel (no boxed card look) ---------- */
+.dash-panel{margin-bottom:22px;}
+.dash-panel .field-label{margin:0 0 10px 2px;}
+
+.field-select{
+  display:flex; align-items:center; gap:12px;
+  padding:12px 14px; margin-bottom:12px;
+  background:var(--surface); border:1.5px solid var(--border); border-radius:14px;
+  transition:border-color .18s var(--ease), box-shadow .2s var(--ease), transform .15s var(--ease);
 }
-.upload-cta:hover:not(:disabled){
-  border-color:var(--accent); border-style:solid; background:var(--accent-soft);
-  transform:translateY(-1px); box-shadow:var(--shadow-sm);
+.field-select:hover{border-color:var(--text-dim);}
+.field-select:focus-within{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);}
+.field-select-icon{
+  flex-shrink:0; width:38px; height:38px; border-radius:11px;
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+  color:#fff; box-shadow:0 2px 10px rgba(91,124,255,.28);
 }
-.upload-cta:active:not(:disabled){transform:scale(.99);}
-.upload-cta:disabled{opacity:.4; cursor:not-allowed;}
-.upload-icon{font-size:20px;}
-.upload-cta-secondary{padding:16px; font-size:14.5px; margin-top:-4px;}
+.field-select-icon svg{width:18px; height:18px;}
+.field-select-main{flex:1; min-width:0;}
+.field-select-label{
+  display:block; font-size:11px; color:var(--text-dim); font-weight:700;
+  text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px;
+}
+.field-select-main select{
+  width:100%; padding:0; border:none; background:none; color:var(--text);
+  font-size:15px; font-weight:600; font-family:inherit; appearance:none; -webkit-appearance:none;
+}
+.field-select-main select:focus{box-shadow:none;}
+.field-select-chevron{color:var(--text-dim); font-size:16px; flex-shrink:0;}
+
+.segmented{
+  display:flex; gap:4px; background:var(--surface); border:1.5px solid var(--border);
+  border-radius:14px; padding:5px; margin-bottom:4px;
+}
+.segmented-opt{
+  flex:1; position:relative; border-radius:10px; cursor:pointer;
+  transition:background .18s var(--ease), box-shadow .18s var(--ease);
+}
+.segmented-opt input{position:absolute; opacity:0; pointer-events:none;}
+.segmented-opt span{
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  padding:10px 8px; font-size:13px; font-weight:600; color:var(--text-dim); line-height:1.3;
+  border-radius:10px; transition:color .18s var(--ease);
+}
+.segmented-opt:has(input:checked){background:var(--surface); box-shadow:var(--shadow-sm);}
+.segmented-opt:has(input:checked) span{color:var(--accent);}
+.segmented-opt:has(input:checked){background:linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);}
+.segmented-opt:has(input:checked) span{color:#fff;}
+.segmented-opt:has(input:focus-visible){outline:2px solid var(--accent); outline-offset:2px;}
+
+/* ---------- Upload hero ---------- */
+.upload-hero{
+  position:relative; overflow:hidden;
+  padding:22px 18px; border-radius:20px; margin-bottom:16px;
+  background:
+    radial-gradient(420px 220px at 0% 0%, var(--accent-soft), transparent 60%),
+    radial-gradient(360px 200px at 100% 100%, rgba(139,92,246,.12), transparent 60%),
+    var(--surface);
+  border:1.5px solid var(--border);
+  box-shadow:var(--shadow-sm);
+}
+.upload-hero-title{font-size:17px; font-weight:700; letter-spacing:-.01em;}
+.upload-hero-sub{color:var(--text-dim); font-size:13px; margin-top:2px; margin-bottom:16px;}
+.upload-options{display:flex; flex-direction:column; gap:10px;}
+.upload-option{
+  display:flex; align-items:center; gap:13px; width:100%; text-align:left;
+  padding:14px; border-radius:14px; cursor:pointer; font-family:inherit;
+  background:var(--surface); border:1.5px solid var(--border);
+  transition:border-color .18s var(--ease), background .18s var(--ease), transform .15s var(--ease), box-shadow .2s var(--ease);
+}
+.upload-option:hover:not(:disabled){
+  border-color:var(--accent); transform:translateY(-1px); box-shadow:var(--shadow-sm);
+}
+.upload-option:active:not(:disabled){transform:scale(.99);}
+.upload-option:disabled{opacity:.42; cursor:not-allowed;}
+.upload-option-icon{
+  flex-shrink:0; width:42px; height:42px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+  color:#fff; box-shadow:0 2px 10px rgba(91,124,255,.3);
+}
+.upload-option-icon svg{width:19px; height:19px;}
+.upload-option-text{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;}
+.upload-option-title{font-size:14.5px; font-weight:700; color:var(--text);}
+.upload-option-sub{font-size:12px; color:var(--text-dim);}
+.upload-option-arrow{color:var(--text-dim); font-size:18px; flex-shrink:0;}
+
+/* ---------- Last commit row (clickable, flat) ---------- */
+.last-commit-row{
+  display:flex; align-items:center; gap:13px; width:100%; text-align:left;
+  padding:15px; border-radius:16px; cursor:pointer; font-family:inherit;
+  background:var(--surface); border:1.5px solid var(--border);
+  transition:border-color .18s var(--ease), transform .15s var(--ease), box-shadow .2s var(--ease);
+}
+.last-commit-row:hover{border-color:var(--accent); transform:translateY(-1px); box-shadow:var(--shadow-sm);}
+.last-commit-row:active{transform:scale(.99);}
+.last-commit-icon{
+  flex-shrink:0; width:38px; height:38px; border-radius:11px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--accent-soft); color:var(--accent);
+}
+.last-commit-icon svg{width:17px; height:17px;}
+.last-commit-main{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; text-align:left;}
+.last-commit-label{font-size:11px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:.05em;}
+.last-commit-chevron{color:var(--text-dim); font-size:19px; flex-shrink:0;}
 
 /* ---------- Commit card ---------- */
-.commit-msg{font-weight:700; font-size:15px; margin-top:4px;}
-.commit-meta{color:var(--text-dim); font-size:13px; margin-top:4px;}
+.commit-msg{font-weight:700; font-size:15px; margin-top:4px; display:block; overflow-wrap:anywhere;}
+.commit-meta{color:var(--text-dim); font-size:13px; margin-top:4px; display:block;}
+
+/* ---------- Page header (full-screen pages with a back button) ---------- */
+.page-header{
+  display:flex; align-items:center; gap:12px; margin-bottom:22px; padding-top:2px;
+}
+.back-btn{
+  width:40px; height:40px; flex-shrink:0; border-radius:12px;
+  background:var(--surface); border:1.5px solid var(--border); color:var(--text);
+}
+.back-btn:hover{background:var(--surface-2); border-color:var(--text-dim);}
+.back-btn svg{width:19px; height:19px;}
+.page-header-title-main{font-size:20px; font-weight:700; letter-spacing:-.01em;}
+.page-header-title-sub{color:var(--text-dim); font-size:13px; margin-top:2px; overflow-wrap:anywhere;}
+
+/* ---------- Settings: full-screen, no boxed cards ---------- */
+.settings-section{padding:4px 2px 22px;}
+.settings-divider{height:1px; background:var(--border); margin:0 0 22px;}
+.commit-file-stat{color:var(--text-dim); font-size:11.5px; margin-top:2px; font-family:"SF Mono",Consolas,Menlo,monospace;}
+.commit-file-stat .add-stat{color:var(--green); font-weight:700;}
+.commit-file-stat .del-stat{color:var(--red); font-weight:700;}
 
 /* ---------- Progress ---------- */
 .progress-label{font-size:15px; margin-bottom:16px; font-weight:600;}

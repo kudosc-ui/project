@@ -37,7 +37,7 @@
 <!-- ============ AUTH / LOGIN VIEW ============ -->
 <section id="view-auth" class="view active">
   <div class="auth-card">
-    <div class="auth-logo"><span class="logo-badge">⇄</span> GitSync</div>
+    <div class="auth-logo"><span class="logo-badge"><img src="icons/icon-96.png" alt=""></span> GitSync</div>
     <p class="auth-sub">Sync a local project folder to a GitHub repository in one clean commit.</p>
 
     <label class="field-label" for="pat-input">GitHub Personal Access Token</label>
@@ -55,6 +55,7 @@
 <div id="app-shell" class="hidden">
 
   <header class="navbar">
+    <span class="logo-badge navbar-logo"><img src="icons/icon-96.png" alt=""></span>
     <nav class="navbar-links">
       <a href="index.html" class="navbar-link active">Home</a>
       <a href="custom.html" class="navbar-link">Custom</a>
@@ -81,51 +82,88 @@
 
       <!-- ============ DASHBOARD VIEW ============ -->
       <section id="view-dashboard" class="view active">
-        <div class="card">
-          <div class="connected-row">
-            <span class="dot dot-green"></span>
-            <span>Connected as <strong id="username-label">—</strong></span>
-            <button id="disconnect-btn" class="btn-link small">Disconnect</button>
-          </div>
+
+        <div class="connected-row flat-row">
+          <span class="dot dot-green"></span>
+          <span>Connected as <strong id="username-label">—</strong></span>
+          <button id="disconnect-btn" class="btn-link small">Disconnect</button>
         </div>
 
-        <div class="card">
-          <label class="field-label">Repository</label>
-          <div class="select-wrap">
-            <select id="repo-select"><option>Loading repositories…</option></select>
+        <div class="dash-panel">
+          <div class="field-select">
+            <span class="field-select-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            </span>
+            <div class="field-select-main">
+              <label class="field-select-label" for="repo-select">Repository</label>
+              <select id="repo-select"><option>Loading repositories…</option></select>
+            </div>
+            <span class="field-select-chevron">⌄</span>
           </div>
           <input id="repo-search" type="text" placeholder="Search repositories…" class="hidden">
 
-          <label class="field-label">Branch</label>
-          <div class="select-wrap">
-            <select id="branch-select"><option>Select a repository first</option></select>
+          <div class="field-select">
+            <span class="field-select-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+            </span>
+            <div class="field-select-main">
+              <label class="field-select-label" for="branch-select">Branch</label>
+              <select id="branch-select"><option>Select a repository first</option></select>
+            </div>
+            <span class="field-select-chevron">⌄</span>
           </div>
 
           <label class="field-label">Sync Mode</label>
-          <div class="radio-row">
-            <label><input type="radio" name="sync-mode" value="repo"> Entire repository</label>
-            <label><input type="radio" name="sync-mode" value="folder" checked> Selected folder only</label>
+          <div class="segmented" id="sync-mode-segmented">
+            <label class="segmented-opt"><input type="radio" name="sync-mode" value="repo"><span>Entire repository</span></label>
+            <label class="segmented-opt"><input type="radio" name="sync-mode" value="folder" checked><span>Selected folder only</span></label>
           </div>
         </div>
 
-        <button id="upload-btn" class="upload-cta" disabled>
-          <span class="upload-icon">↑</span>
-          <span>Upload Project Folder</span>
-        </button>
-        <button id="upload-zip-btn" class="upload-cta upload-cta-secondary" disabled>
-          <span class="upload-icon">📦</span>
-          <span>Upload ZIP File</span>
-        </button>
+        <div class="upload-hero">
+          <div class="upload-hero-head">
+            <div class="upload-hero-title">Push your code</div>
+            <div class="upload-hero-sub">Choose how you'd like to sync this project</div>
+          </div>
+          <div class="upload-options">
+            <button id="upload-btn" class="upload-option" disabled>
+              <span class="upload-option-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              </span>
+              <span class="upload-option-text">
+                <span class="upload-option-title">Upload Project Folder</span>
+                <span class="upload-option-sub">Pick a folder straight from your device</span>
+              </span>
+              <span class="upload-option-arrow">›</span>
+            </button>
+            <button id="upload-zip-btn" class="upload-option" disabled>
+              <span class="upload-option-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>
+              </span>
+              <span class="upload-option-text">
+                <span class="upload-option-title">Upload ZIP File</span>
+                <span class="upload-option-sub">Extract and sync a .zip archive</span>
+              </span>
+              <span class="upload-option-arrow">›</span>
+            </button>
+          </div>
+        </div>
         <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden">
         <input type="file" id="files-input" multiple class="hidden">
         <input type="file" id="zip-input" accept=".zip,application/zip" class="hidden">
         <button id="fallback-files-btn" class="btn-link small hidden">Folder upload not supported — select files instead</button>
 
-        <div class="card" id="last-commit-card" style="display:none">
-          <div class="card-title">Last Commit</div>
-          <div id="last-commit-message" class="commit-msg">—</div>
-          <div id="last-commit-meta" class="commit-meta">—</div>
-        </div>
+        <button type="button" class="last-commit-row" id="last-commit-card" style="display:none">
+          <span class="last-commit-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><line x1="3" y1="12" x2="9" y2="12"></line><line x1="15" y1="12" x2="21" y2="12"></line></svg>
+          </span>
+          <span class="last-commit-main">
+            <span class="last-commit-label">Last Commit</span>
+            <span id="last-commit-message" class="commit-msg">—</span>
+            <span id="last-commit-meta" class="commit-meta">—</span>
+          </span>
+          <span class="last-commit-chevron">›</span>
+        </button>
       </section>
 
       <!-- ============ UPLOAD PROGRESS VIEW ============ -->
@@ -255,10 +293,33 @@
         </div>
       </section>
 
+      <!-- ============ LAST COMMIT FILES VIEW ============ -->
+      <section id="view-commit-files" class="view">
+        <div class="page-header">
+          <button id="commit-files-back-btn" class="icon-btn back-btn" aria-label="Back to dashboard" title="Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
+          <div class="page-header-title">
+            <div class="page-header-title-main">Last Commit</div>
+            <div id="commit-files-subtitle" class="page-header-title-sub">—</div>
+          </div>
+        </div>
+        <div id="commit-files-list" class="file-list"></div>
+      </section>
+
       <!-- ============ SETTINGS VIEW ============ -->
       <section id="view-settings" class="view">
 
-        <div class="card settings-card">
+        <div class="page-header">
+          <button id="settings-back-btn" class="icon-btn back-btn" aria-label="Back to home" title="Back to home">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
+          <div class="page-header-title">
+            <div class="page-header-title-main">Settings</div>
+          </div>
+        </div>
+
+        <div class="settings-section">
           <div class="settings-section-head">
             <span class="settings-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
@@ -277,7 +338,9 @@
           <p class="hint">Tokens are stored in this browser only. Remove any account at any time.</p>
         </div>
 
-        <div class="card settings-card">
+        <div class="settings-divider"></div>
+
+        <div class="settings-section">
           <div class="settings-section-head">
             <span class="settings-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
@@ -295,13 +358,15 @@
           <div id="settings-default-branch" class="static-value">—</div>
 
           <label class="field-label">Sync Mode</label>
-          <div class="radio-row settings-radio-row">
-            <label><input type="radio" name="settings-sync-mode" value="repo"> <span>Entire repository</span></label>
-            <label><input type="radio" name="settings-sync-mode" value="folder"> <span>Selected folder only</span></label>
+          <div class="segmented settings-radio-row">
+            <label class="segmented-opt"><input type="radio" name="settings-sync-mode" value="repo"><span>Entire repository</span></label>
+            <label class="segmented-opt"><input type="radio" name="settings-sync-mode" value="folder"><span>Selected folder only</span></label>
           </div>
         </div>
 
-        <div class="card settings-card">
+        <div class="settings-divider"></div>
+
+        <div class="settings-section">
           <div class="settings-section-head">
             <span class="settings-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>
