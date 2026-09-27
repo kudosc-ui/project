@@ -148,33 +148,69 @@ const UI = (() => {
   }
 
   /**
-   * Renders the file list for the repo's last commit (from the GitHub
-   * "get a commit" response, which includes a files[] array).
+   * Full-screen commit history: up to 5 recent commits, each with its own
+   * clearly labeled list of added/modified/deleted files (from GitHub's
+   * "get a commit" response, which includes a files[] array). Rendered as a
+   * flat, divided list rather than individually boxed cards.
    */
-  function renderCommitFilesList(commitInfo) {
-    const subtitle = document.getElementById('commit-files-subtitle');
-    const container = document.getElementById('commit-files-list');
-    const firstLine = (commitInfo.commit.message || '').split('\n')[0];
-    subtitle.textContent = `${firstLine || '(no message)'} · ${commitInfo.sha.slice(0, 7)}`;
+  function renderCommitHistoryLoading() {
+    document.getElementById('commit-files-list').innerHTML =
+      '<div class="hint" style="padding:16px 2px">Loading commit history…</div>';
+  }
 
-    const files = commitInfo.files || [];
+  function renderCommitHistory(commits) {
+    const container = document.getElementById('commit-files-list');
     container.innerHTML = '';
-    if (!files.length) {
-      container.innerHTML = '<div class="hint" style="padding:16px 0">No file details available for this commit.</div>';
+    if (!commits || !commits.length) {
+      container.innerHTML = '<div class="hint" style="padding:16px 2px">No commits found on this branch.</div>';
       return;
     }
-    for (const f of files) {
-      const status = commitFileStatus(f.status);
-      const row = document.createElement('div');
-      row.className = 'file-row';
-      row.innerHTML = `
-        <div class="file-row-top">
-          <span class="status-badge ${status}">${badgeLabel(status)}</span>
-          <span class="file-path">${escapeHtml(f.filename)}</span>
+
+    for (const commitInfo of commits) {
+      const firstLine = (commitInfo.commit?.message || '').split('\n')[0] || '(no message)';
+      const authorDate = commitInfo.commit?.author?.date;
+      const files = commitInfo.files || [];
+      const added = files.filter(f => f.status === 'added').length;
+      const removed = files.filter(f => f.status === 'removed').length;
+      const changed = files.length - added - removed;
+
+      const group = document.createElement('div');
+      group.className = 'commit-history-group';
+
+      const statParts = [];
+      if (added) statParts.push(`<span class="chg-stat added">+${added} added</span>`);
+      if (changed) statParts.push(`<span class="chg-stat modified">${changed} changed</span>`);
+      if (removed) statParts.push(`<span class="chg-stat deleted">-${removed} deleted</span>`);
+
+      group.innerHTML = `
+        <div class="commit-history-head">
+          <span class="commit-history-msg">${escapeHtml(firstLine)}</span>
+          <span class="commit-history-meta">
+            ${authorDate ? relativeTime(authorDate) + ' · ' : ''}<code>${commitInfo.sha.slice(0, 7)}</code>
+            ${statParts.length ? ' · ' + statParts.join(' ') : ''}
+          </span>
         </div>
-        <div class="commit-file-stat"><span class="add-stat">+${f.additions ?? 0}</span> <span class="del-stat">-${f.deletions ?? 0}</span></div>
+        <div class="commit-history-files"></div>
       `;
-      container.appendChild(row);
+
+      const filesEl = group.querySelector('.commit-history-files');
+      if (!files.length) {
+        filesEl.innerHTML = '<div class="hint" style="padding:8px 0 4px">No file details available for this commit.</div>';
+      } else {
+        for (const f of files) {
+          const status = commitFileStatus(f.status);
+          const row = document.createElement('div');
+          row.className = 'chf-row';
+          row.innerHTML = `
+            <span class="status-badge ${status}">${badgeLabel(status)}</span>
+            <span class="file-path">${escapeHtml(f.filename)}</span>
+            <span class="commit-file-stat"><span class="add-stat">+${f.additions ?? 0}</span> <span class="del-stat">-${f.deletions ?? 0}</span></span>
+          `;
+          filesEl.appendChild(row);
+        }
+      }
+
+      container.appendChild(group);
     }
   }
 
@@ -263,7 +299,8 @@ const UI = (() => {
 
   return {
     showView, setNavActive, toast, confirm, setProgress,
-    renderRepoOptions, renderBranchOptions, renderLastCommit, renderCommitFilesList,
+    renderRepoOptions, renderBranchOptions, renderLastCommit,
+    renderCommitHistoryLoading, renderCommitHistory,
     renderSummaryCounts, renderDeletionsWarning, renderFileList,
     openDiffModal, closeDiffModal, renderDiffOps, escapeHtml,
     initSyncResultsList, setSyncResultStatus, renderSyncSummary

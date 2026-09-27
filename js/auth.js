@@ -113,14 +113,23 @@ const Auth = (() => {
         }
       });
     } catch (networkErr) {
-      throw new Error('Could not reach GitHub. Check your internet connection.');
+      const err = new Error('Could not reach GitHub. Check your internet connection.');
+      err.kind = 'network';
+      throw err;
     }
 
     if (response.status === 401) {
-      throw new Error('That token was rejected by GitHub. Double-check it and try again.');
+      const err = new Error('That token was rejected by GitHub. Double-check it and try again.');
+      err.kind = 'auth';
+      throw err;
     }
     if (!response.ok) {
-      throw new Error('GitHub authentication expired. Please reconnect your GitHub account.');
+      // A non-401 failure here (5xx, a flaky proxy, a momentary GitHub
+      // outage) says nothing about whether the token itself is still good —
+      // it must NOT be treated the same as a rejected token by callers.
+      const err = new Error('GitHub could not be reached right now. Please try again.');
+      err.kind = 'transient';
+      throw err;
     }
     return response.json();
   }

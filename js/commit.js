@@ -16,14 +16,14 @@ const Commit = (() => {
    * Anything else (auth, permission, invalid, not_found) fails immediately —
    * retrying those would only waste time.
    */
-  async function withRetry(fn) {
+  async function withRetry(fn, extraRetryKinds) {
     let attempt = 0;
     while (true) {
       try {
         return await fn();
       } catch (e) {
         attempt++;
-        const retryable = e && (e.kind === 'rate_limit' || e.kind === 'network');
+        const retryable = e && (e.kind === 'rate_limit' || e.kind === 'network' || (extraRetryKinds && extraRetryKinds.includes(e.kind)));
         if (!retryable || attempt > MAX_RETRIES) throw e;
         const wait = e.retryAfter ? e.retryAfter * 1000 : Math.min(1000 * Math.pow(2, attempt - 1), 12000);
         await sleep(wait);
@@ -106,7 +106,13 @@ const Commit = (() => {
         throw err;
       }
     } else {
+      // GitHub's Git Data API (blobs/trees/commits) can briefly 404 right
+      // after a repository is created — the repo record exists but isn't
+      // fully provisioned yet. A short pause here, plus retrying 'not_found'
+      // on the calls below, is what stops a brand-new repo from ending up
+      // permanently empty when the very first push lands too fast.
       onProgress(2, 'Preparing first commit…');
+      await sleep(1500);
     }
 
     const changed = [...diff.added, ...diff.modified];
@@ -130,7 +136,7 @@ const Commit = (() => {
       (item) => withRetry(async () => {
         const content = await Files.readFileContent(item.file, item.path);
         return GitHub.createBlob(owner, repo, content.base64);
-      }),
+      }, isInitialCommit ? ['not_found'] : undefined),
       (item, blob, err) => {
         if (err) {
           failures.push({ path: item.path, error: err });
@@ -169,7 +175,10 @@ const Commit = (() => {
 
     // 5. Build the new tree. A brand-new repo has no base tree to build on.
     onProgress(93, 'Creating tree…');
-    const newTree = await withRetry(() => GitHub.createTree(owner, repo, isInitialCommit ? null : baseTreeSha, treeEntries));
+    const newTree = await withRetry(
+      () => GitHub.createTree(owner, repo, isInitialCommit ? null : baseTreeSha, treeEntries),
+      isInitialCommit ? ['not_found'] : undefined
+    );
 
     // 6. One final conflict check right before committing (not applicable to a first commit).
     if (!isInitialCommit && await hasConflict(owner, repo, branch, baseCommitSha)) {
@@ -180,7 +189,10 @@ const Commit = (() => {
 
     // 7. Create the commit object. A first commit has no parent.
     onProgress(96, 'Creating commit…');
-    const newCommit = await withRetry(() => GitHub.createCommit(owner, repo, message, newTree.sha, isInitialCommit ? null : baseCommitSha));
+    const newCommit = await withRetry(
+      () => GitHub.createCommit(owner, repo, message, newTree.sha, isInitialCommit ? null : baseCommitSha),
+      isInitialCommit ? ['not_found'] : undefined
+    );
 
     // 8. Point the branch at the new commit. A brand-new repo has no ref yet,
     // so it must be created rather than updated; force:false on the update
@@ -188,7 +200,7 @@ const Commit = (() => {
     // line of defense.
     onProgress(98, 'Updating branch…');
     if (isInitialCommit) {
-      await withRetry(() => GitHub.createRef(owner, repo, branch, newCommit.sha));
+      await withRetry(() => GitHub.createRef(owner, repo, branch, newCommit.sha), ['not_found']);
     } else {
       await withRetry(() => GitHub.updateRef(owner, repo, branch, newCommit.sha, false));
     }

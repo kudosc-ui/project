@@ -150,6 +150,16 @@ const GitHub = (() => {
     return request(`/repos/${owner}/${repo}/commits/${encodeURIComponent(branch)}?per_page=1`);
   }
 
+  /** Returns up to `count` recent commit summaries (sha + message + date, no file list) for a branch. */
+  function listCommits(owner, repo, branch, count = 5) {
+    return request(`/repos/${owner}/${repo}/commits?sha=${encodeURIComponent(branch)}&per_page=${count}`);
+  }
+
+  /** Returns full detail for one commit, including its files[] (added/modified/removed, +/- counts). */
+  function getCommitDetail(owner, repo, sha) {
+    return request(`/repos/${owner}/${repo}/commits/${sha}`);
+  }
+
   // ---- Repository creation & metadata ----
 
   function createRepo(name, isPrivate, description) {
@@ -219,6 +229,7 @@ const GitHub = (() => {
   return {
     listRepos, listBranches, getBranch, getRef, getCommit, getTree,
     createBlob, createTree, createCommit, updateRef, getLatestCommitForBranch,
+    listCommits, getCommitDetail,
     createRepo, getRepo, deleteRepo, createRef,
     getContents, putContents, deleteFileContents,
     enablePages, getPages

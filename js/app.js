@@ -18,7 +18,9 @@
     lastCommitInfo: null,        // full commit payload (incl. files[]) for the last-commit row
     diff: null,
     filter: 'all',
-    searchTerm: ''
+    searchTerm: '',
+    branches: [],                 // branches of the currently selected repo, for the branch picker
+    defaultBranchName: null
   };
 
   // ---------------- Helpers ----------------
@@ -44,6 +46,7 @@
   async function tryAutoLogin() {
     const token = Auth.getToken();
     if (!token) return;
+    const cachedAccount = Auth.getActiveAccount();
     try {
       const user = await Auth.validateToken(token);
       // Keeps the saved account's login/avatar fresh, and migrates a
@@ -51,7 +54,22 @@
       Auth.upsertAccount(user.login, token, user.avatar_url);
       await enterApp(user);
     } catch (e) {
-      Auth.clearToken();
+      // Only a genuinely rejected token (401) should sign the person out.
+      // A network hiccup or a momentary GitHub outage on cold launch used
+      // to wipe the saved token here, which is why the app kept asking to
+      // paste it again — a flaky connection at startup is common on mobile
+      // and must never delete a saved account.
+      if (e && e.kind === 'auth') {
+        Auth.clearToken();
+        return;
+      }
+      if (cachedAccount) {
+        await enterApp({ login: cachedAccount.login, avatar_url: cachedAccount.avatarUrl });
+        UI.toast("Couldn't verify your GitHub connection — check your internet if something fails.");
+      }
+      // No cached account to fall back on and no confirmed rejection:
+      // leave the token in storage and just show the login screen this
+      // time rather than deleting it.
     }
   }
 
@@ -105,10 +123,15 @@
     UI.showView('view-dashboard');
 
     const repoSelect = document.getElementById('repo-select');
+    const repoTrigger = document.getElementById('repo-select-trigger');
     repoSelect.innerHTML = '<option>Loading repositories…</option>';
+    document.getElementById('repo-select-value').textContent = 'Loading repositories…';
+    repoTrigger.classList.add('disabled');
     try {
       state.repos = await GitHub.listRepos();
       UI.renderRepoOptions(repoSelect, state.repos);
+      syncRepoTriggerLabel();
+      repoTrigger.classList.toggle('disabled', !state.repos.length);
       if (state.repos.length) {
         await onRepoChange(); // load branches + last commit for first repo
       }
@@ -119,24 +142,80 @@
     }
   }
 
-  // ---------------- Dashboard: repo/branch selection ----------------
+  // ---------------- Dashboard: repo/branch selection (custom picker) ----------------
+
+  function syncRepoTriggerLabel() {
+    const repoSelect = document.getElementById('repo-select');
+    document.getElementById('repo-select-value').textContent =
+      state.repos.length ? (repoSelect.value || 'Select a repository') : 'No repositories found';
+  }
+
+  function syncBranchTriggerLabel(loadingText) {
+    const branchSelect = document.getElementById('branch-select');
+    const valueEl = document.getElementById('branch-select-value');
+    if (loadingText) { valueEl.textContent = loadingText; return; }
+    valueEl.textContent = state.currentRepoFullName
+      ? (branchSelect.value || 'Select a branch')
+      : 'Select a repository first';
+  }
+
+  function openRepoPicker() {
+    if (document.getElementById('repo-select-trigger').classList.contains('disabled')) return;
+    const repoSelect = document.getElementById('repo-select');
+    const items = state.repos.map(r => ({
+      value: r.full_name,
+      label: r.full_name,
+      sub: r.private ? 'Private' : 'Public',
+      selected: r.full_name === repoSelect.value
+    }));
+    Picker.open('Select Repository', items, (value) => {
+      if (value === repoSelect.value) return;
+      repoSelect.value = value;
+      repoSelect.dispatchEvent(new Event('change'));
+    }, 'Search repositories…');
+  }
+
+  function openBranchPicker() {
+    if (document.getElementById('branch-select-trigger').classList.contains('disabled')) return;
+    if (!state.currentRepoFullName || !state.branches.length) return;
+    const branchSelect = document.getElementById('branch-select');
+    const items = state.branches.map(b => ({
+      value: b.name,
+      label: b.name,
+      sub: b.name === state.defaultBranchName ? 'Default branch' : undefined,
+      selected: b.name === branchSelect.value
+    }));
+    Picker.open('Select Branch', items, (value) => {
+      if (value === branchSelect.value) return;
+      branchSelect.value = value;
+      branchSelect.dispatchEvent(new Event('change'));
+    }, 'Search branches…');
+  }
 
   async function onRepoChange() {
     const repoSelect = document.getElementById('repo-select');
     const branchSelect = document.getElementById('branch-select');
+    const branchTrigger = document.getElementById('branch-select-trigger');
     const fullName = repoSelect.value;
     if (!fullName || !fullName.includes('/')) return;
     state.currentRepoFullName = fullName;
+    syncRepoTriggerLabel();
 
     const selectedOption = repoSelect.options[repoSelect.selectedIndex];
     const defaultBranch = selectedOption?.dataset?.defaultBranch;
+    state.defaultBranchName = defaultBranch || null;
 
     branchSelect.innerHTML = '<option>Loading branches…</option>';
+    syncBranchTriggerLabel('Loading branches…');
+    branchTrigger.classList.add('disabled');
     const { owner, repo } = splitFullName(fullName);
     try {
       const branches = await GitHub.listBranches(owner, repo);
+      state.branches = branches;
       UI.renderBranchOptions(branchSelect, branches, defaultBranch);
       state.currentBranch = branchSelect.value;
+      syncBranchTriggerLabel();
+      branchTrigger.classList.toggle('disabled', !branches.length);
       await refreshLastCommit();
     } catch (e) {
       UI.toast(friendlyError(e));
@@ -145,6 +224,7 @@
 
   function onBranchChange() {
     state.currentBranch = document.getElementById('branch-select').value;
+    syncBranchTriggerLabel();
     refreshLastCommit();
   }
 
@@ -166,10 +246,23 @@
 
   // ---------------- Last commit → file list ----------------
 
-  function handleLastCommitClick() {
-    if (!state.lastCommitInfo) return;
+  async function handleLastCommitClick() {
+    if (!state.lastCommitInfo || !state.currentRepoFullName || !state.currentBranch) return;
     UI.showView('view-commit-files');
-    UI.renderCommitFilesList(state.lastCommitInfo);
+    UI.renderCommitHistoryLoading();
+    const { owner, repo } = splitFullName(state.currentRepoFullName);
+    try {
+      const summaries = await GitHub.listCommits(owner, repo, state.currentBranch, 5);
+      // Full file-level detail (added/modified/deleted, +/- counts) needs a
+      // separate request per commit — fetch them in parallel.
+      const commits = await Promise.all(
+        summaries.map(s => GitHub.getCommitDetail(owner, repo, s.sha).catch(() => s))
+      );
+      UI.renderCommitHistory(commits);
+    } catch (e) {
+      UI.renderCommitHistory([state.lastCommitInfo]);
+      UI.toast(friendlyError(e));
+    }
   }
 
   // ---------------- Upload flow ----------------
@@ -496,6 +589,18 @@
 
     document.getElementById('repo-select').addEventListener('change', onRepoChange);
     document.getElementById('branch-select').addEventListener('change', onBranchChange);
+
+    // Custom picker sheet for Repository/Branch, instead of the native
+    // browser <select> dropdown.
+    const repoTrigger = document.getElementById('repo-select-trigger');
+    const branchTrigger = document.getElementById('branch-select-trigger');
+    repoTrigger.addEventListener('click', openRepoPicker);
+    branchTrigger.addEventListener('click', openBranchPicker);
+    [repoTrigger, branchTrigger].forEach(el => {
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+      });
+    });
     document.querySelectorAll('input[name="sync-mode"]').forEach(r => r.addEventListener('change', handleSyncModeChange));
     document.querySelectorAll('input[name="settings-sync-mode"]').forEach(r => r.addEventListener('change', handleSyncModeChange));
 

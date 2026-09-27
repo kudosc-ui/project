@@ -90,28 +90,29 @@
         </div>
 
         <div class="dash-panel">
-          <div class="field-select">
+          <div class="field-select" id="repo-select-trigger" role="button" tabindex="0" aria-haspopup="listbox">
             <span class="field-select-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
             </span>
             <div class="field-select-main">
-              <label class="field-select-label" for="repo-select">Repository</label>
-              <select id="repo-select"><option>Loading repositories…</option></select>
+              <span class="field-select-label">Repository</span>
+              <span class="field-select-value" id="repo-select-value">Loading repositories…</span>
             </div>
             <span class="field-select-chevron">⌄</span>
           </div>
-          <input id="repo-search" type="text" placeholder="Search repositories…" class="hidden">
+          <select id="repo-select" class="visually-hidden" aria-hidden="true" tabindex="-1"><option>Loading repositories…</option></select>
 
-          <div class="field-select">
+          <div class="field-select" id="branch-select-trigger" role="button" tabindex="0" aria-haspopup="listbox">
             <span class="field-select-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
             </span>
             <div class="field-select-main">
-              <label class="field-select-label" for="branch-select">Branch</label>
-              <select id="branch-select"><option>Select a repository first</option></select>
+              <span class="field-select-label">Branch</span>
+              <span class="field-select-value" id="branch-select-value">Select a repository first</span>
             </div>
             <span class="field-select-chevron">⌄</span>
           </div>
+          <select id="branch-select" class="visually-hidden" aria-hidden="true" tabindex="-1"><option>Select a repository first</option></select>
 
           <label class="field-label">Sync Mode</label>
           <div class="segmented" id="sync-mode-segmented">
@@ -300,11 +301,11 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
           </button>
           <div class="page-header-title">
-            <div class="page-header-title-main">Last Commit</div>
-            <div id="commit-files-subtitle" class="page-header-title-sub">—</div>
+            <div class="page-header-title-main">Commit History</div>
+            <div id="commit-files-subtitle" class="page-header-title-sub">Last 5 commits on this branch</div>
           </div>
         </div>
-        <div id="commit-files-list" class="file-list"></div>
+        <div id="commit-files-list" class="commit-history"></div>
       </section>
 
       <!-- ============ SETTINGS VIEW ============ -->
@@ -394,6 +395,22 @@
   </div>
 </div><!-- /app-shell -->
 
+<!-- Picker sheet: custom, in-app popup for Repository/Branch selection —
+     replaces the OS/browser native <select> dropdown with something that
+     matches the rest of the app and opens reliably on the first tap. -->
+<div id="picker-sheet" class="modal hidden">
+  <div class="modal-sheet picker-modal-sheet">
+    <div class="modal-header">
+      <span id="picker-sheet-title">Select</span>
+      <button id="picker-sheet-close" class="icon-btn" aria-label="Close">✕</button>
+    </div>
+    <div class="picker-search-wrap">
+      <input type="text" id="picker-search" placeholder="Search…" autocomplete="off" spellcheck="false">
+    </div>
+    <div id="picker-list" class="picker-list" role="listbox"></div>
+  </div>
+</div>
+
 <!-- Diff modal (full-screen sheet on mobile) -->
 <div id="diff-modal" class="modal hidden">
   <div class="modal-sheet">
@@ -430,6 +447,7 @@
 <script src="js/compare.js"></script>
 <script src="js/commit.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/picker.js"></script>
 <script src="js/accounts.js"></script>
 <script src="js/app.js"></script>
 <script src="js/theme.js"></script>
