@@ -1,3 +1,9 @@
+/*!
+ * GitSync — © 2026 CodeZing (https://youtube.com/@kudosc?si=au2Bagg75VuP_jEr)
+ * All rights reserved. Source available for viewing only via the official
+ * GitHub repository. No copying, re-hosting, modification-and-redistribution,
+ * or resale without written permission. See LICENSE for full terms.
+ */
 /**
  * auth.js
  * Handles GitHub Personal Access Tokens for one or more saved accounts, so

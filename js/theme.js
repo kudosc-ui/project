@@ -1,3 +1,9 @@
+/*!
+ * GitSync — © 2026 CodeZing (https://youtube.com/@kudosc?si=au2Bagg75VuP_jEr)
+ * All rights reserved. Source available for viewing only via the official
+ * GitHub repository. No copying, re-hosting, modification-and-redistribution,
+ * or resale without written permission. See LICENSE for full terms.
+ */
 /* GitSync — theme toggle (light / dark)
    The initial theme is applied synchronously by an inline script in <head>
    (before first paint) to avoid a flash of the wrong theme. This file wires

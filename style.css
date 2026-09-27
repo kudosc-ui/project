@@ -1,3 +1,9 @@
+/*!
+ * GitSync — © 2026 CodeZing (https://youtube.com/@kudosc?si=au2Bagg75VuP_jEr)
+ * All rights reserved. Source available for viewing only via the official
+ * GitHub repository. No copying, re-hosting, modification-and-redistribution,
+ * or resale without written permission. See LICENSE for full terms.
+ */
 :root{
   /* ---- Dark theme (default) ---- */
   --bg: #0a0c11;
@@ -856,6 +862,16 @@ html[data-theme="light"] .chip.active{color:#3346c9;}
   animation:toastIn .22s var(--ease);
 }
 @keyframes toastIn{from{opacity:0; transform:translate(-50%, 8px);}to{opacity:1; transform:translate(-50%, 0);}}
+
+/* ---------- App footer (credit / license notice) ---------- */
+.app-footer{
+  text-align:center; font-size:11.5px; color:var(--text-dim);
+  padding:16px 16px 90px; line-height:1.6; border-top:1px solid var(--border);
+  margin-top:8px;
+}
+.app-footer a{color:var(--text-dim); text-decoration:underline;}
+.app-footer a:hover{color:var(--accent);}
+@media (min-width:860px){ .app-footer{padding-bottom:24px;} }
 
 /* ---------- Desktop layout ---------- */
 @media (min-width:860px){

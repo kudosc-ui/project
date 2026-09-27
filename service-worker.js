@@ -1,3 +1,9 @@
+/*!
+ * GitSync — © 2026 CodeZing (https://youtube.com/@kudosc?si=au2Bagg75VuP_jEr)
+ * All rights reserved. Source available for viewing only via the official
+ * GitHub repository. No copying, re-hosting, modification-and-redistribution,
+ * or resale without written permission. See LICENSE for full terms.
+ */
 /* GitSync — service worker
    Caches the static app shell (HTML/CSS/JS/icons) so the app installs and
    opens instantly, offline included. GitHub API calls and third-party

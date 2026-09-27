@@ -7,6 +7,25 @@ no build step.
 
 ---
 
+## Notice — Author & License
+
+**Created by CodeZing** — [youtube.com/@kudosc](https://youtube.com/@kudosc?si=au2Bagg75VuP_jEr)
+
+© 2026 CodeZing. All rights reserved.
+
+- **Official source:** this repository only —
+  `[ADD YOUR GITHUB REPOSITORY URL HERE]`
+- **Sharing:** please share this project by linking directly to the
+  official repository above, not by re-uploading or mirroring it elsewhere.
+- **Not permitted without written permission:** copying/re-hosting this
+  code on another repository or site, publishing modified/derivative
+  versions, or selling this software or any part of it.
+
+Full terms are in [`LICENSE`](./LICENSE). If you'd like permission for
+something outside those terms, reach out via the YouTube channel above.
+
+---
+
 ## 1. Running it
 
 GitSync is just static files. The GitHub API requires the page to be served
