@@ -21,7 +21,6 @@
     uploadedRootName: '',
     localHashes: null,           // Map<path, sha1hex>
     baseline: null,              // { baseCommitSha, baseTreeSha, fullTree }
-    lastCommitInfo: null,        // full commit payload (incl. files[]) for the last-commit row
     diff: null,
     filter: 'all',
     searchTerm: '',
@@ -230,7 +229,7 @@
       syncBranchTriggerLabel();
       branchTrigger.classList.toggle('disabled', !branches.length);
       document.getElementById('new-branch-btn').disabled = !branches.length;
-      await refreshLastCommit();
+      await refreshAppCommitPanel();
     } catch (e) {
       UI.toast(friendlyError(e));
     }
@@ -239,7 +238,7 @@
   function onBranchChange() {
     state.currentBranch = document.getElementById('branch-select').value;
     syncBranchTriggerLabel();
-    refreshLastCommit();
+    refreshAppCommitPanel();
   }
 
   // ---------------- New branch creation ----------------
@@ -316,7 +315,7 @@
       syncBranchTriggerLabel();
       document.getElementById('branch-select-trigger').classList.remove('disabled');
       document.getElementById('new-branch-btn').disabled = false;
-      await refreshLastCommit();
+      await refreshAppCommitPanel();
     } catch (e) {
       err.textContent = friendlyError(e);
       err.classList.remove('hidden');
@@ -326,26 +325,65 @@
     }
   }
 
-  async function refreshLastCommit() {
-    const card = document.getElementById('last-commit-card');
-    const msgEl = document.getElementById('last-commit-message');
-    const metaEl = document.getElementById('last-commit-meta');
-    if (!state.currentRepoFullName || !state.currentBranch) { card.style.display = 'none'; return; }
+  /**
+   * Refreshes the "App Commit" dashboard panel from the local, instant
+   * record of what this app last pushed (js/applog.js) — no network call.
+   * The "Live GitHub Commit" row is deliberately NOT auto-refreshed here:
+   * it's only ever fetched fresh, on demand, when the user taps it.
+   */
+  function refreshAppCommitPanel() {
+    const group = document.getElementById('commit-status-group');
+    if (!state.currentRepoFullName || !state.currentBranch) { group.style.display = 'none'; return; }
+    group.style.display = '';
     const { owner, repo } = splitFullName(state.currentRepoFullName);
+    UI.renderAppCommitRow(AppLog.load(owner, repo, state.currentBranch));
+  }
+
+  // ---------------- Live GitHub Commit (always a fresh fetch) ----------------
+
+  async function handleLiveCommitClick() {
+    if (!state.currentRepoFullName || !state.currentBranch) return;
+    UI.showView('view-live-commit');
+    UI.renderLiveCommitLoading();
+    const { owner, repo } = splitFullName(state.currentRepoFullName);
+    const branch = state.currentBranch;
+    const appRecord = AppLog.load(owner, repo, branch);
     try {
-      const commitInfo = await GitHub.getLatestCommitForBranch(owner, repo, state.currentBranch);
-      state.lastCommitInfo = commitInfo;
-      UI.renderLastCommit(card, msgEl, metaEl, commitInfo);
+      const ref = await GitHub.getRef(owner, repo, branch);
+      const headSha = ref.object.sha;
+      const commitInfo = await GitHub.getCommitDetail(owner, repo, headSha);
+
+      let reconciliation = null;
+      if (appRecord && appRecord.sha) {
+        if (headSha === appRecord.sha) {
+          reconciliation = { status: 'match' };
+          if (appRecord.verifyStatus !== 'confirmed') {
+            AppLog.setVerifyStatus(owner, repo, branch, appRecord.sha, 'confirmed');
+          }
+        } else {
+          const liveFiles = new Set((commitInfo.files || []).map(f => f.filename));
+          reconciliation = {
+            status: 'mismatch',
+            pending: appRecord.files.filter(f => !liveFiles.has(f.path)),
+            confirmed: appRecord.files.filter(f => liveFiles.has(f.path))
+          };
+        }
+      }
+
+      UI.renderLiveCommit({
+        branch, commitInfo, appRecord, reconciliation,
+        failedFiles: appRecord && appRecord.lastFailure ? appRecord.lastFailure.files : []
+      });
+      refreshAppCommitPanel();
     } catch (e) {
-      state.lastCommitInfo = null;
-      card.style.display = 'none';
+      UI.renderLiveCommitError(friendlyError(e));
     }
   }
 
-  // ---------------- Last commit → file list ----------------
+  // ---------------- Commit history (last 5 commits) ----------------
 
   async function handleLastCommitClick() {
-    if (!state.lastCommitInfo || !state.currentRepoFullName || !state.currentBranch) return;
+    if (!state.currentRepoFullName || !state.currentBranch) return;
     UI.showView('view-commit-files');
     UI.renderCommitHistoryLoading();
     const { owner, repo } = splitFullName(state.currentRepoFullName);
@@ -358,7 +396,7 @@
       );
       UI.renderCommitHistory(commits);
     } catch (e) {
-      UI.renderCommitHistory([state.lastCommitInfo]);
+      UI.renderCommitHistory([]);
       UI.toast(friendlyError(e));
     }
   }
@@ -614,14 +652,28 @@
         }
       });
 
-      // Every file succeeded and the commit landed.
+      // Every file succeeded and the commit landed. Capture the file list
+      // now, before showSuccess() resets state.diff.
+      const filesPushed = [
+        ...state.diff.added.map(i => ({ path: i.path, status: 'added' })),
+        ...state.diff.modified.map(i => ({ path: i.path, status: 'modified' })),
+        ...state.diff.deleted.map(i => ({ path: i.path, status: 'deleted' }))
+      ];
       UI.renderSyncSummary(successCount, 0);
-      setTimeout(() => showSuccess(result, message, owner, repo), 1000);
+      setTimeout(() => showSuccess(result, message, owner, repo, filesPushed), 1000);
     } catch (e) {
       if (e.kind === 'conflict') {
         UI.showView('view-conflict');
       } else if (e.kind === 'partial_failure') {
         UI.renderSyncSummary(successCount, failedCount);
+        // Nothing was committed — the app side knows exactly which files
+        // errored, so record that for the Live GitHub Commit screen even
+        // though GitHub itself never saw these files.
+        AppLog.recordFailure(owner, repo, state.currentBranch, {
+          message: e.message,
+          files: (e.failures || []).map(f => ({ path: f.path, error: (f.error && f.error.message) || 'Upload failed' }))
+        });
+        refreshAppCommitPanel();
       } else {
         // Something failed outside the per-file loop (tree/commit/ref step).
         UI.renderSyncSummary(successCount, changedItems.length - successCount);
@@ -632,13 +684,31 @@
     }
   }
 
-  function showSuccess(commitResult, message, owner, repo) {
+  function showSuccess(commitResult, message, owner, repo, filesPushed) {
     UI.showView('view-success');
-    const total = state.diff.added.length + state.diff.modified.length + state.diff.deleted.length;
-    document.getElementById('success-message').textContent = message.split('\n')[0];
-    document.getElementById('success-file-count').textContent = `${total} files changed`;
-    document.getElementById('success-sha').textContent = commitResult.sha.slice(0, 7);
-    document.getElementById('view-on-github-btn').href = `https://github.com/${owner}/${repo}/commit/${commitResult.sha}`;
+    UI.renderSuccessView({
+      message,
+      sha: commitResult.sha,
+      files: filesPushed,
+      githubUrl: `https://github.com/${owner}/${repo}/commit/${commitResult.sha}`
+    });
+
+    // The app's own side is done the moment we get here — record it
+    // instantly (no network needed) so the App Commit panel updates right
+    // away, then quietly confirm with GitHub in the background and update
+    // the on-screen badge live once it catches up.
+    const branch = state.currentBranch;
+    AppLog.recordPush(owner, repo, branch, { sha: commitResult.sha, message, files: filesPushed });
+    refreshAppCommitPanel();
+    AppLog.verify(owner, repo, branch, commitResult.sha, (status) => {
+      AppLog.setVerifyStatus(owner, repo, branch, commitResult.sha, status);
+      if (document.getElementById('view-success').classList.contains('active')) {
+        UI.updateSuccessVerify(status);
+      }
+      if (document.getElementById('view-dashboard').classList.contains('active')) {
+        refreshAppCommitPanel();
+      }
+    });
 
     // Reset upload-related state so the dashboard is clean next time.
     state.uploadedFileMap = null;
@@ -649,7 +719,7 @@
   function resetToDashboard() {
     UI.showView('view-dashboard');
     UI.setNavActive('dashboard');
-    refreshLastCommit();
+    refreshAppCommitPanel();
   }
 
   // ---------------- Filters / search ----------------
@@ -767,7 +837,13 @@
     document.getElementById('back-to-dashboard-btn').addEventListener('click', resetToDashboard);
     document.getElementById('conflict-back-btn').addEventListener('click', resetToDashboard);
 
-    document.getElementById('last-commit-card').addEventListener('click', handleLastCommitClick);
+    document.getElementById('live-commit-card').addEventListener('click', handleLiveCommitClick);
+    document.getElementById('live-commit-refresh-btn').addEventListener('click', handleLiveCommitClick);
+    document.getElementById('live-commit-back-btn').addEventListener('click', resetToDashboard);
+    document.getElementById('live-commit-body').addEventListener('click', (e) => {
+      if (e.target.closest('#live-commit-history-link')) handleLastCommitClick();
+    });
+    document.getElementById('view-live-from-success-btn').addEventListener('click', handleLiveCommitClick);
     document.getElementById('commit-files-back-btn').addEventListener('click', resetToDashboard);
     document.getElementById('settings-back-btn').addEventListener('click', resetToDashboard);
 

@@ -561,6 +561,41 @@ body.no-scroll{overflow:hidden;}
 .last-commit-label{font-size:11px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:.05em;}
 .last-commit-chevron{color:var(--text-dim); font-size:19px; flex-shrink:0;}
 
+/* ---------- App Commit / Live GitHub Commit rows ---------- */
+.commit-status-group{display:flex; flex-direction:column; gap:10px; margin-bottom:16px;}
+.commit-status-row{
+  display:flex; align-items:center; gap:14px; width:100%; text-align:left;
+  padding:16px; border-radius:18px; font-family:inherit;
+  background:var(--surface-2); border:1.5px solid transparent;
+  transition:background .18s var(--ease), border-color .18s var(--ease), transform .15s var(--ease), box-shadow .2s var(--ease);
+}
+.commit-status-row-btn{cursor:pointer;}
+.commit-status-row-btn:hover{border-color:var(--accent); background:var(--surface); transform:translateY(-1px); box-shadow:var(--shadow-sm);}
+.commit-status-row-btn:active{transform:scale(.99);}
+.commit-status-icon{
+  position:relative; flex-shrink:0; width:40px; height:40px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--accent-soft); color:var(--accent);
+}
+.commit-status-icon svg{width:17px; height:17px;}
+.commit-status-icon.live-icon{background:var(--green-soft); color:var(--green);}
+.live-pulse-dot{
+  position:absolute; top:-3px; right:-3px; width:9px; height:9px; border-radius:50%;
+  background:var(--green); box-shadow:0 0 0 2px var(--surface-2);
+  animation:livePulse 1.8s ease-in-out infinite;
+}
+@keyframes livePulse{0%,100%{box-shadow:0 0 0 2px var(--surface-2), 0 0 0 0 rgba(62,207,142,.5);}50%{box-shadow:0 0 0 2px var(--surface-2), 0 0 0 5px rgba(62,207,142,0);}}
+.commit-status-main{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; text-align:left;}
+.commit-status-label-row{display:flex; align-items:center; gap:8px;}
+.commit-status-label{font-size:11px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:.05em;}
+.verify-badge{
+  font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px;
+  text-transform:uppercase; letter-spacing:.02em;
+}
+.verify-badge.pending{background:var(--accent-soft); color:var(--accent);}
+.verify-badge.confirmed{background:var(--green-soft); color:var(--green);}
+.verify-badge.unconfirmed{background:var(--yellow-soft); color:var(--yellow);}
+
 /* ---------- Commit card ---------- */
 .commit-msg{font-weight:700; font-size:15px; margin-top:4px; display:block; overflow-wrap:anywhere;}
 .commit-meta{color:var(--text-dim); font-size:13px; margin-top:4px; display:block;}
@@ -575,6 +610,8 @@ body.no-scroll{overflow:hidden;}
 }
 .back-btn:hover{background:var(--surface-2); border-color:var(--text-dim);}
 .back-btn svg{width:19px; height:19px;}
+.page-header-title{flex:1; min-width:0;}
+.page-header .icon-btn{flex-shrink:0;}
 .page-header-title-main{font-size:20px; font-weight:700; letter-spacing:-.01em;}
 .page-header-title-sub{color:var(--text-dim); font-size:13px; margin-top:2px; overflow-wrap:anywhere;}
 
@@ -766,7 +803,83 @@ html[data-theme="light"] .chip.active{color:#3346c9;}
 .conflict-icon{font-size:32px; margin-bottom:10px;}
 .success-title{font-weight:700; font-size:17.5px; margin-bottom:6px; letter-spacing:-.01em;}
 .sha-row{margin:14px 0; font-size:14px;}
-#view-success .btn, #view-conflict .btn{margin-top:10px;}
+#view-conflict .btn{margin-top:10px;}
+
+/* ---------- Success view (full-screen, not boxed) ---------- */
+.view-success-full{padding-bottom:8px;}
+.success-hero{
+  text-align:center; padding:38px 8px 28px;
+  background:
+    radial-gradient(600px 320px at 50% -20%, var(--green-soft), transparent 60%);
+  border-radius:22px; margin-bottom:22px;
+}
+.success-hero-badge{
+  width:72px; height:72px; border-radius:50%;
+  background:linear-gradient(135deg, var(--green) 0%, var(--accent) 130%);
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 18px; box-shadow:0 10px 30px -8px var(--green-soft);
+  animation:popIn .4s var(--ease);
+}
+.success-hero-badge .success-check{
+  width:auto; height:auto; background:none; margin:0; color:#fff; font-size:34px; font-weight:800;
+  animation:none;
+}
+.success-hero-title{font-weight:800; font-size:22px; letter-spacing:-.02em; margin-bottom:8px;}
+.success-hero-msg{font-size:15px; color:var(--text); font-weight:600; overflow-wrap:anywhere; margin-bottom:8px; padding:0 12px;}
+.success-hero-meta{color:var(--text-dim); font-size:13px; display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap;}
+.success-hero-meta code{font-size:12.5px;}
+.success-hero-dot{opacity:.6;}
+
+.sync-status-block{margin-bottom:26px; display:flex; flex-direction:column; gap:2px;}
+.sync-status-row{display:flex; align-items:flex-start; gap:12px; padding:12px 4px;}
+.sync-status-icon{
+  flex-shrink:0; width:28px; height:28px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800;
+  margin-top:1px;
+}
+.sync-status-icon.done{background:var(--green-soft); color:var(--green);}
+.sync-status-icon.pending{background:var(--accent-soft); color:var(--accent);}
+.sync-status-icon.warn{background:var(--yellow-soft); color:var(--yellow);}
+.sync-status-text{display:flex; flex-direction:column; gap:2px;}
+.sync-status-title{font-weight:700; font-size:14.5px;}
+.sync-status-sub{color:var(--text-dim); font-size:12.5px; line-height:1.5;}
+.spinner{
+  width:12px; height:12px; border-radius:50%;
+  border:2px solid var(--accent-soft); border-top-color:var(--accent);
+  animation:spin .7s linear infinite; display:inline-block;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.success-files-section{margin-bottom:22px;}
+.success-files-head{font-size:12.5px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin:0 4px 10px;}
+.success-files-list{display:flex; flex-direction:column;}
+.flat-file-row{
+  display:flex; align-items:center; gap:10px; padding:10px 4px;
+  border-bottom:1px solid var(--border);
+}
+.flat-file-row:last-child{border-bottom:none;}
+.success-actions{display:flex; flex-direction:column; gap:10px; padding-bottom:16px;}
+
+/* ---------- Live GitHub Commit view (full-screen, not boxed) ---------- */
+.live-commit-body{padding-bottom:24px;}
+.live-commit-hero{padding:6px 2px 18px; border-bottom:1px solid var(--border); margin-bottom:16px;}
+.live-commit-hero-title{font-weight:700; font-size:17px; overflow-wrap:anywhere; margin-bottom:6px;}
+.live-commit-hero-meta{color:var(--text-dim); font-size:13px; margin-bottom:10px;}
+.live-commit-hero-meta code{font-size:12px;}
+.live-banner{
+  display:flex; align-items:flex-start; gap:10px; padding:14px; border-radius:14px;
+  font-size:13.5px; line-height:1.55; margin-bottom:20px;
+}
+.live-banner code{font-size:12px;}
+.live-banner-icon{flex-shrink:0; font-size:16px; margin-top:-1px;}
+.live-banner.match{background:var(--green-soft); color:var(--green);}
+.live-banner.pending{background:var(--accent-soft); color:var(--accent);}
+.live-banner.warn{background:var(--yellow-soft); color:var(--yellow);}
+.live-commit-section{margin-bottom:24px;}
+.live-commit-section-head{font-size:12.5px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin:0 2px 4px;}
+.live-commit-section-sub{font-size:12.5px; color:var(--text-dim); margin:0 2px 10px; line-height:1.5;}
+.chf-error{color:var(--red); font-size:12px; padding:0 2px 10px 30px; margin-top:-6px;}
+.live-commit-section .chf-row:first-child{border-top:none;}
 
 /* ---------- Modal / diff sheet ---------- */
 .modal{
