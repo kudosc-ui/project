@@ -79,6 +79,7 @@
     <span class="logo-badge navbar-logo"><img src="icons/icon-96.png" alt=""></span>
     <nav class="navbar-links">
       <a href="index.html" class="navbar-link active">Home</a>
+      <a href="commits.html" class="navbar-link">Commits</a>
       <a href="custom.html" class="navbar-link">Custom</a>
     </nav>
     <div class="navbar-actions">
@@ -95,7 +96,7 @@
   <div class="layout">
     <nav class="sidebar">
       <button class="nav-item active" data-nav="dashboard">Dashboard</button>
-      <button class="nav-item" data-nav="history">History</button>
+      <a class="nav-item" href="commits.html" style="text-decoration:none">Commits</a>
       <button class="nav-item" data-nav="howto">How to Use</button>
       <button class="nav-item" data-nav="settings">Settings</button>
     </nav>
@@ -183,42 +184,12 @@
           </div>
         </div>
         <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden">
-        <input type="file" id="files-input" multiple class="hidden">
+        <input type="file" id="files-input" multiple class="hidden" accept=".txt,.md,.markdown,.rst,.json,.jsonc,.js,.mjs,.cjs,.ts,.tsx,.jsx,.vue,.svelte,.py,.pyw,.ipynb,.java,.kt,.kts,.gradle,.c,.h,.cpp,.cc,.hpp,.cs,.go,.rs,.rb,.php,.swift,.dart,.lua,.pl,.r,.scala,.sh,.bash,.zsh,.bat,.cmd,.ps1,.sql,.html,.htm,.css,.scss,.sass,.less,.xml,.yml,.yaml,.toml,.ini,.cfg,.conf,.env,.properties,.lock,.gitignore,.gitattributes,.editorconfig,.dockerfile,.makefile,.csv,.tsv,.log,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.rtf,.zip,.rar,.7z,.tar,.gz,.tgz,.bz2,.xz,.apk,.aab,.ipa,.jar,.war,.exe,.msi,.dmg,.deb,.rpm,.bin,.iso,.so,.dll,.png,.jpg,.jpeg,.gif,.webp,.svg,.bmp,.ico,.avif,.heic,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.mov,.mkv,.webm,.avi,.ttf,.otf,.woff,.woff2,.eot,.wasm,.map,.pem,.key,.crt,.license">
         <input type="file" id="zip-input" accept=".zip,application/zip" class="hidden">
-        <input type="file" id="single-file-input" class="hidden">
+        <input type="file" id="single-file-input" class="hidden" accept=".txt,.md,.markdown,.rst,.json,.jsonc,.js,.mjs,.cjs,.ts,.tsx,.jsx,.vue,.svelte,.py,.pyw,.ipynb,.java,.kt,.kts,.gradle,.c,.h,.cpp,.cc,.hpp,.cs,.go,.rs,.rb,.php,.swift,.dart,.lua,.pl,.r,.scala,.sh,.bash,.zsh,.bat,.cmd,.ps1,.sql,.html,.htm,.css,.scss,.sass,.less,.xml,.yml,.yaml,.toml,.ini,.cfg,.conf,.env,.properties,.lock,.gitignore,.gitattributes,.editorconfig,.dockerfile,.makefile,.csv,.tsv,.log,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.rtf,.zip,.rar,.7z,.tar,.gz,.tgz,.bz2,.xz,.apk,.aab,.ipa,.jar,.war,.exe,.msi,.dmg,.deb,.rpm,.bin,.iso,.so,.dll,.png,.jpg,.jpeg,.gif,.webp,.svg,.bmp,.ico,.avif,.heic,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.mov,.mkv,.webm,.avi,.ttf,.otf,.woff,.woff2,.eot,.wasm,.map,.pem,.key,.crt,.license">
         <button id="fallback-files-btn" class="btn-link small hidden">Folder upload not supported — select files instead</button>
 
-        <div class="commit-status-group" id="commit-status-group" style="display:none">
-          <div class="commit-status-row" id="app-commit-card">
-            <span class="commit-status-icon app-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
-            </span>
-            <span class="commit-status-main">
-              <span class="commit-status-label-row">
-                <span class="commit-status-label">App Commit</span>
-                <span id="app-commit-verify-badge" class="verify-badge hidden"></span>
-              </span>
-              <span id="app-commit-message" class="commit-msg">No pushes yet on this branch</span>
-              <span id="app-commit-meta" class="commit-meta">Upload something to get started</span>
-            </span>
-          </div>
-
-          <button type="button" class="commit-status-row commit-status-row-btn" id="live-commit-card">
-            <span class="commit-status-icon live-icon">
-              <span class="live-pulse-dot"></span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4"></path><path d="M12 18v4"></path><path d="M4.93 4.93l2.83 2.83"></path><path d="M16.24 16.24l2.83 2.83"></path><path d="M2 12h4"></path><path d="M18 12h4"></path><path d="M4.93 19.07l2.83-2.83"></path><path d="M16.24 7.76l2.83-2.83"></path></svg>
-            </span>
-            <span class="commit-status-main">
-              <span class="commit-status-label-row">
-                <span class="commit-status-label">Live GitHub Commit</span>
-              </span>
-              <span class="commit-msg">See the exact, real-time state of this branch</span>
-              <span class="commit-meta">Always fetched fresh from GitHub — tap to check</span>
-            </span>
-            <span class="last-commit-chevron">›</span>
-          </button>
-        </div>
-      </section>
+              </section>
 
       <!-- ============ UPLOAD PROGRESS VIEW ============ -->
       <section id="view-progress" class="view">
@@ -350,7 +321,7 @@
             <span class="sync-status-icon pending" id="success-verify-icon"><span class="spinner"></span></span>
             <span class="sync-status-text">
               <span class="sync-status-title" id="success-verify-title">Confirming on GitHub…</span>
-              <span class="sync-status-sub" id="success-verify-sub">GitHub can take a few seconds to reflect a brand-new push. Open Live GitHub Commit any time to check the exact live state.</span>
+              <span class="sync-status-sub" id="success-verify-sub">GitHub can take a few seconds to reflect a brand-new push. Open the Commits page any time to check the exact live state.</span>
             </span>
           </div>
         </div>
@@ -361,7 +332,7 @@
         </div>
 
         <div class="success-actions">
-          <button id="view-live-from-success-btn" class="btn btn-secondary btn-block">Open Live GitHub Commit</button>
+          <a id="view-live-from-success-btn" class="btn btn-secondary btn-block" href="commits.html">Open Commits Page</a>
           <a id="view-on-github-btn" class="btn btn-secondary btn-block" href="#" target="_blank" rel="noopener">View on GitHub.com</a>
           <button id="back-to-dashboard-btn" class="btn btn-primary btn-block">Back to Dashboard</button>
         </div>
@@ -376,37 +347,6 @@
           <p>Refresh the repository and compare the files again.</p>
           <button id="conflict-back-btn" class="btn btn-primary btn-block">Back to Dashboard</button>
         </div>
-      </section>
-
-      <!-- ============ LAST COMMIT FILES VIEW ============ -->
-      <section id="view-commit-files" class="view">
-        <div class="page-header">
-          <button id="commit-files-back-btn" class="icon-btn back-btn" aria-label="Back to dashboard" title="Back">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-          </button>
-          <div class="page-header-title">
-            <div class="page-header-title-main">Commit History</div>
-            <div id="commit-files-subtitle" class="page-header-title-sub">Last 5 commits on this branch</div>
-          </div>
-        </div>
-        <div id="commit-files-list" class="commit-history"></div>
-      </section>
-
-      <!-- ============ LIVE GITHUB COMMIT VIEW (full-screen) ============ -->
-      <section id="view-live-commit" class="view">
-        <div class="page-header">
-          <button id="live-commit-back-btn" class="icon-btn back-btn" aria-label="Back to dashboard" title="Back">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-          </button>
-          <div class="page-header-title">
-            <div class="page-header-title-main">Live GitHub Commit</div>
-            <div id="live-commit-subtitle" class="page-header-title-sub">Fetching the exact live state…</div>
-          </div>
-          <button id="live-commit-refresh-btn" class="icon-btn" aria-label="Refresh" title="Refresh">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="19" height="19"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-          </button>
-        </div>
-        <div id="live-commit-body" class="live-commit-body"></div>
       </section>
 
       <!-- ============ SETTINGS VIEW ============ -->
@@ -665,8 +605,8 @@
             </div>
           </div>
           <ol class="howto-steps">
-            <li><span class="howto-step-num">•</span><span class="howto-step-body">The dashboard shows <strong>App Commit</strong> (what GitSync last pushed) and <strong>Live GitHub Commit</strong> (the exact, real-time state of the branch). Tap <strong>Live GitHub Commit</strong> any time to fetch it fresh and see which files matched, which GitHub hasn't reflected yet, and which failed and need reuploading.</span></li>
-            <li><span class="howto-step-num">•</span><span class="howto-step-body">From the Live GitHub Commit screen, tap <strong>View last 5 commits</strong> for full history — added, modified and deleted files, with +/- counts, for each of the last 5 commits.</span></li>
+            <li><span class="howto-step-num">•</span><span class="howto-step-body">Open the <strong>Commits</strong> tab in the top bar to see <strong>App Commit</strong> (what GitSync last pushed) and <strong>Live GitHub Commit</strong> (the exact, real-time state of the branch). Tap <strong>Live GitHub Commit</strong> any time to fetch it fresh and see which files matched, which GitHub hasn't reflected yet, and which failed and need reuploading.</span></li>
+            <li><span class="howto-step-num">•</span><span class="howto-step-body">On the Commits page, tap <strong>View last 5 commits</strong> for full history — added, modified and deleted files, with +/- counts, for each of the last 5 commits.</span></li>
             <li><span class="howto-step-num">•</span><span class="howto-step-body">In the <strong>Custom</strong> tab, tap <strong>Browse Files</strong> on any repository to view, edit or delete individual files.</span></li>
             <li><span class="howto-step-num">•</span><span class="howto-step-body">Tap <strong>Publish</strong> on a public repository to host it live with GitHub Pages.</span></li>
             <li><span class="howto-step-num">•</span><span class="howto-step-body">Switch between GitHub accounts any time from <strong>Settings → Connected Accounts</strong>.</span></li>

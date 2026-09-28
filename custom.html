@@ -46,6 +46,7 @@
     <span class="logo-badge navbar-logo"><img src="icons/icon-96.png" alt=""></span>
     <nav class="navbar-links">
       <a href="index.html" class="navbar-link">Home</a>
+      <a href="commits.html" class="navbar-link">Commits</a>
       <a href="custom.html" class="navbar-link active">Custom</a>
     </nav>
     <div class="navbar-actions">
@@ -149,7 +150,16 @@
           <span id="repo-browser-title" class="card-title" style="margin:0">Files</span>
           <button id="repo-browser-close" class="btn-link small">Close</button>
         </div>
-        <div id="repo-file-list" class="file-list"></div>
+        <div id="repo-file-stats" class="fb-stats"></div>
+        <div class="fb-toolbar">
+          <input type="text" id="repo-file-search" placeholder="Search files…" autocomplete="off">
+          <div class="chip-group" id="repo-file-sort">
+            <button class="chip active" data-sort="size">Biggest first</button>
+            <button class="chip" data-sort="name">Name</button>
+            <button class="chip" data-sort="type">Type</button>
+          </div>
+        </div>
+        <div id="repo-file-list" class="file-list fb-list"></div>
         <button id="delete-repo-btn" class="btn btn-secondary btn-block danger-outline" style="margin-top:14px">Delete Repository</button>
       </div>
 

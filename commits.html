@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<!--
+  GitSync — © 2026 CodeZing (https://youtube.com/@kudosc?si=au2Bagg75VuP_jEr)
+  All rights reserved. Source available for viewing only via the official
+  GitHub repository. No copying, re-hosting, modification-and-redistribution,
+  or resale without written permission. See LICENSE for full terms.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>GitSync — Commits</title>
+<meta name="description" content="See what GitSync pushed and the live state of any branch on GitHub.">
+
+<!-- Theme applied before first paint to avoid a flash of the wrong theme -->
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('gitsync-theme');
+    if(!t){ t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+    document.documentElement.setAttribute('data-theme', t);
+  }catch(e){}
+})();
+</script>
+
+<link rel="stylesheet" href="style.css">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#5b7cff" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#4f6bf0" media="(prefers-color-scheme: light)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GitSync">
+<link rel="icon" href="icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+</head>
+<body>
+
+<div id="app-shell">
+
+  <header class="navbar">
+    <span class="logo-badge navbar-logo"><img src="icons/icon-96.png" alt=""></span>
+    <nav class="navbar-links">
+      <a href="index.html" class="navbar-link">Home</a>
+      <a href="commits.html" class="navbar-link active">Commits</a>
+      <a href="custom.html" class="navbar-link">Custom</a>
+    </nav>
+    <div class="navbar-actions">
+      <button id="theme-toggle" class="icon-btn theme-toggle" type="button" title="Switch to light theme" aria-label="Switch to light theme">
+        <svg class="theme-icon icon-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+        <svg class="theme-icon icon-moon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <div id="commits-not-connected" class="hidden">
+    <div class="content custom-content">
+      <div class="card center-card">
+        <div class="conflict-icon">🔒</div>
+        <div class="success-title">Connect a GitHub account first</div>
+        <p class="hint">Head to the Home page to connect with a Personal Access Token, then come back here.</p>
+        <a href="index.html" class="btn btn-primary btn-block">Go to Home</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="commits-connected" class="hidden">
+    <div class="content custom-content">
+
+      <!-- ============ COMMITS MAIN ============ -->
+      <section id="view-commits-main" class="view active">
+        <div class="connected-row flat-row">
+          <span class="dot dot-green"></span>
+          <span>Connected as <strong id="commits-username-label">—</strong></span>
+        </div>
+
+        <div class="dash-panel">
+          <div class="field-select" id="repo-select-trigger" role="button" tabindex="0">
+            <span class="field-select-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></span>
+            <div class="field-select-main"><span class="field-select-label">Repository</span><span class="field-select-value" id="repo-select-value">Loading repositories…</span></div>
+            <span class="field-select-chevron">⌄</span>
+          </div>
+          <div class="field-select" id="branch-select-trigger" role="button" tabindex="0">
+            <span class="field-select-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg></span>
+            <div class="field-select-main"><span class="field-select-label">Branch</span><span class="field-select-value" id="branch-select-value">Select a repository first</span></div>
+            <span class="field-select-chevron">⌄</span>
+          </div>
+        </div>
+
+        <div class="commit-status-group" id="commit-status-group" >
+          <div class="commit-status-row" id="app-commit-card">
+            <span class="commit-status-icon app-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+            </span>
+            <span class="commit-status-main">
+              <span class="commit-status-label-row">
+                <span class="commit-status-label">App Commit</span>
+                <span id="app-commit-verify-badge" class="verify-badge hidden"></span>
+              </span>
+              <span id="app-commit-message" class="commit-msg">No pushes yet on this branch</span>
+              <span id="app-commit-meta" class="commit-meta">Upload something to get started</span>
+            </span>
+          </div>
+
+          <button type="button" class="commit-status-row commit-status-row-btn" id="live-commit-card">
+            <span class="commit-status-icon live-icon">
+              <span class="live-pulse-dot"></span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4"></path><path d="M12 18v4"></path><path d="M4.93 4.93l2.83 2.83"></path><path d="M16.24 16.24l2.83 2.83"></path><path d="M2 12h4"></path><path d="M18 12h4"></path><path d="M4.93 19.07l2.83-2.83"></path><path d="M16.24 7.76l2.83-2.83"></path></svg>
+            </span>
+            <span class="commit-status-main">
+              <span class="commit-status-label-row">
+                <span class="commit-status-label">Live GitHub Commit</span>
+              </span>
+              <span class="commit-msg">See the exact, real-time state of this branch</span>
+              <span class="commit-meta">Always fetched fresh from GitHub — tap to check</span>
+            </span>
+            <span class="last-commit-chevron">›</span>
+          </button>
+        </div>
+
+        <div class="live-commit-section-head" style="margin:22px 2px 6px">Recent commits</div>
+        <div id="commits-inline-history" class="commit-history"></div>
+      </section>
+
+      <!-- ============ COMMIT HISTORY (last 5) ============ -->
+      <section id="view-commit-files" class="view">
+        <div class="page-header">
+          <button id="commit-files-back-btn" class="icon-btn back-btn" aria-label="Back" title="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
+          <div class="page-header-title">
+            <div class="page-header-title-main">Commit History</div>
+            <div id="commit-files-subtitle" class="page-header-title-sub">Last 5 commits on this branch</div>
+          </div>
+        </div>
+        <div id="commit-files-list" class="commit-history"></div>
+      </section>
+
+      <!-- ============ LIVE GITHUB COMMIT ============ -->
+      <section id="view-live-commit" class="view">
+        <div class="page-header">
+          <button id="live-commit-back-btn" class="icon-btn back-btn" aria-label="Back" title="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
+          <div class="page-header-title">
+            <div class="page-header-title-main">Live GitHub Commit</div>
+            <div id="live-commit-subtitle" class="page-header-title-sub">Fetching the exact live state…</div>
+          </div>
+          <button id="live-commit-refresh-btn" class="icon-btn" aria-label="Refresh" title="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="19" height="19"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button>
+        </div>
+        <div id="live-commit-body" class="live-commit-body"></div>
+      </section>
+
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    GitSync © 2026 <strong>CodeZing</strong> ·
+    <a href="https://youtube.com/@kudosc?si=au2Bagg75VuP_jEr" target="_blank" rel="noopener">youtube.com/@kudosc</a>
+    · All rights reserved. Not for redistribution or resale.
+  </footer>
+</div>
+
+<div id="picker-sheet" class="modal hidden">
+  <div class="modal-sheet picker-modal-sheet">
+    <div class="modal-header"><span id="picker-sheet-title">Select</span><button id="picker-sheet-close" class="icon-btn" aria-label="Close">✕</button></div>
+    <div class="picker-search-wrap"><input type="text" id="picker-search" placeholder="Search…" autocomplete="off" spellcheck="false"></div>
+    <div id="picker-list" class="picker-list" role="listbox"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/auth.js"></script>
+<script src="js/github.js"></script>
+<script src="js/applog.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/picker.js"></script>
+<script src="js/commits.js"></script>
+<script src="js/theme.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('service-worker.js').then(function (reg) {
+      if (reg.waiting) reg.waiting.postMessage('skipWaiting');
+      reg.addEventListener('updatefound', function () {
+        var fresh = reg.installing;
+        if (!fresh) return;
+        fresh.addEventListener('statechange', function () {
+          if (fresh.state === 'installed' && navigator.serviceWorker.controller) {
+            fresh.postMessage('skipWaiting');
+          }
+        });
+      });
+    }).catch(function () { /* ignore */ });
+
+    var reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (reloaded) return;
+      reloaded = true;
+      window.location.reload();
+    });
+  });
+}
+</script>
+</body>
+</html>

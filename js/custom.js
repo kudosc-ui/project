@@ -465,7 +465,9 @@
       } catch (e) {
         // Empty repo (no commits yet) — an empty file list is the correct result.
       }
-      state.browsing = { owner, repoName: repo, branch, treeMap };
+      state.browsing = { owner, repoName: repo, branch, treeMap, sort: 'size', search: '' };
+      const _s = document.getElementById('repo-file-search'); if (_s) _s.value = '';
+      document.querySelectorAll('#repo-file-sort .chip').forEach(c => c.classList.toggle('active', c.dataset.sort === 'size'));
       renderRepoFileList();
     } catch (e) {
       list.innerHTML = '';
@@ -475,35 +477,111 @@
     document.getElementById('delete-repo-btn').onclick = () => openDeleteRepoModal(owner, repo);
   }
 
+  const FB_TYPES = {
+    apk:['APK','#3ddc84'], aab:['AAB','#3ddc84'], ipa:['IPA','#8b93a7'],
+    zip:['ZIP','#e2a93b'], rar:['RAR','#e2a93b'], '7z':['7Z','#e2a93b'], tar:['TAR','#e2a93b'], gz:['GZ','#e2a93b'],
+    png:['IMG','#a855f7'], jpg:['IMG','#a855f7'], jpeg:['IMG','#a855f7'], gif:['IMG','#a855f7'], webp:['IMG','#a855f7'], svg:['SVG','#a855f7'], ico:['ICO','#a855f7'],
+    mp4:['VID','#ef4444'], mov:['VID','#ef4444'], mkv:['VID','#ef4444'], mp3:['AUD','#ec4899'], wav:['AUD','#ec4899'],
+    js:['JS','#f0c020'], ts:['TS','#3178c6'], jsx:['JSX','#22b8cf'], tsx:['TSX','#22b8cf'], json:['JSON','#f59e0b'],
+    html:['HTML','#f97316'], css:['CSS','#3b82f6'], py:['PY','#3b82f6'], java:['JAVA','#ef4444'], kt:['KT','#a855f7'],
+    md:['MD','#64748b'], txt:['TXT','#64748b'], pdf:['PDF','#ef4444'], xml:['XML','#f97316'], yml:['YML','#64748b'], yaml:['YML','#64748b']
+  };
+
+  function fmtSize(b) {
+    if (b == null) return '—';
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB';
+    return (b / 1073741824).toFixed(2) + ' GB';
+  }
+
+  function fbType(path) {
+    const ext = extOf(path);
+    const t = FB_TYPES[ext];
+    return { ext, label: t ? t[0] : (ext ? ext.slice(0, 4).toUpperCase() : 'FILE'), color: t ? t[1] : '#8b93a7' };
+  }
+
   function renderRepoFileList() {
     const list = document.getElementById('repo-file-list');
+    const statsEl = document.getElementById('repo-file-stats');
+    const map = state.browsing.treeMap;
     list.innerHTML = '';
-    const paths = [...state.browsing.treeMap.keys()].sort();
 
-    if (!paths.length) {
+    let entries = [...map.entries()].map(([path, v]) => ({ path, size: v.size || 0, ...fbType(path) }));
+    if (!entries.length) {
+      statsEl.innerHTML = '';
       list.innerHTML = '<div class="hint" style="padding:10px 0">This repository has no files yet.</div>';
       return;
     }
 
-    for (const path of paths) {
+    const total = entries.reduce((n, e) => n + e.size, 0);
+    const apks = entries.filter(e => e.ext === 'apk' || e.ext === 'aab');
+    const maxSize = Math.max(...entries.map(e => e.size), 1);
+    statsEl.innerHTML = `
+      <div class="fb-stat"><span class="fb-stat-num">${entries.length}</span><span class="fb-stat-label">Files</span></div>
+      <div class="fb-stat"><span class="fb-stat-num">${fmtSize(total)}</span><span class="fb-stat-label">Total size</span></div>
+      <div class="fb-stat"><span class="fb-stat-num">${apks.length}</span><span class="fb-stat-label">APK / AAB</span></div>`;
+
+    const q = (state.browsing.search || '').trim().toLowerCase();
+    if (q) entries = entries.filter(e => e.path.toLowerCase().includes(q));
+    const sort = state.browsing.sort || 'size';
+    if (sort === 'size') entries.sort((a, b) => b.size - a.size || a.path.localeCompare(b.path));
+    else if (sort === 'type') entries.sort((a, b) => a.ext.localeCompare(b.ext) || b.size - a.size);
+    else entries.sort((a, b) => a.path.localeCompare(b.path));
+
+    if (!entries.length) {
+      list.innerHTML = '<div class="hint" style="padding:10px 0">No files match your search.</div>';
+      return;
+    }
+
+    entries.forEach((e, idx) => {
+      const slash = e.path.lastIndexOf('/');
+      const dir = slash >= 0 ? e.path.slice(0, slash + 1) : '';
+      const name = slash >= 0 ? e.path.slice(slash + 1) : e.path;
+      const isApk = e.ext === 'apk' || e.ext === 'aab';
+      const big = e.size >= 5 * 1048576;
+      const pct = Math.max(3, Math.round((e.size / maxSize) * 100));
       const row = document.createElement('div');
-      row.className = 'file-row';
+      row.className = 'file-row fb-row' + (isApk ? ' fb-apk' : '');
+      row.style.setProperty('--fb-color', e.color);
       row.innerHTML = `
-        <div class="file-row-top">
-          <span class="file-path">${UI.escapeHtml(path)}</span>
+        <div class="fb-main">
+          <span class="fb-icon">${UI.escapeHtml(e.label)}</span>
+          <span class="fb-info">
+            <span class="fb-name">${UI.escapeHtml(name)}${sort === 'size' && idx === 0 && e.size > 0 ? ' <span class="fb-tag fb-tag-top">Largest</span>' : ''}${big && !(sort === 'size' && idx === 0) ? ' <span class="fb-tag">Large</span>' : ''}</span>
+            ${dir ? `<span class="fb-dir">${UI.escapeHtml(dir)}</span>` : ''}
+          </span>
+          <span class="fb-size">${fmtSize(e.size)}</span>
         </div>
+        <div class="fb-bar"><span style="width:${pct}%"></span></div>
         <div class="repo-row-actions">
           <button class="btn-link small" data-action="view">View</button>
           <button class="btn-link small" data-action="edit">Edit</button>
           <button class="btn-link small danger-text" data-action="delete">Delete</button>
         </div>
       `;
-      row.querySelector('[data-action="view"]').addEventListener('click', () => openFile(path, 'view'));
-      row.querySelector('[data-action="edit"]').addEventListener('click', () => openFile(path, 'edit'));
-      row.querySelector('[data-action="delete"]').addEventListener('click', () => handleDeleteFile(path));
+      row.querySelector('[data-action="view"]').addEventListener('click', () => openFile(e.path, 'view'));
+      row.querySelector('[data-action="edit"]').addEventListener('click', () => openFile(e.path, 'edit'));
+      row.querySelector('[data-action="delete"]').addEventListener('click', () => handleDeleteFile(e.path));
       list.appendChild(row);
-    }
+    });
   }
+
+  function initFileBrowserControls() {
+    const search = document.getElementById('repo-file-search');
+    const sortGroup = document.getElementById('repo-file-sort');
+    if (!search || !sortGroup) return;
+    search.addEventListener('input', () => { if (state.browsing) { state.browsing.search = search.value; renderRepoFileList(); } });
+    sortGroup.addEventListener('click', (ev) => {
+      const b = ev.target.closest('.chip');
+      if (!b || !state.browsing) return;
+      sortGroup.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      b.classList.add('active');
+      state.browsing.sort = b.dataset.sort;
+      renderRepoFileList();
+    });
+  }
+  document.addEventListener('DOMContentLoaded', initFileBrowserControls);
 
   async function openFile(path, mode) {
     const { owner, repoName, branch } = state.browsing;

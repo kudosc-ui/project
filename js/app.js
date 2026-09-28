@@ -229,7 +229,6 @@
       syncBranchTriggerLabel();
       branchTrigger.classList.toggle('disabled', !branches.length);
       document.getElementById('new-branch-btn').disabled = !branches.length;
-      await refreshAppCommitPanel();
     } catch (e) {
       UI.toast(friendlyError(e));
     }
@@ -238,7 +237,7 @@
   function onBranchChange() {
     state.currentBranch = document.getElementById('branch-select').value;
     syncBranchTriggerLabel();
-    refreshAppCommitPanel();
+    
   }
 
   // ---------------- New branch creation ----------------
@@ -315,89 +314,12 @@
       syncBranchTriggerLabel();
       document.getElementById('branch-select-trigger').classList.remove('disabled');
       document.getElementById('new-branch-btn').disabled = false;
-      await refreshAppCommitPanel();
     } catch (e) {
       err.textContent = friendlyError(e);
       err.classList.remove('hidden');
     } finally {
       createBtn.disabled = false;
       createBtn.textContent = 'Create Branch';
-    }
-  }
-
-  /**
-   * Refreshes the "App Commit" dashboard panel from the local, instant
-   * record of what this app last pushed (js/applog.js) — no network call.
-   * The "Live GitHub Commit" row is deliberately NOT auto-refreshed here:
-   * it's only ever fetched fresh, on demand, when the user taps it.
-   */
-  function refreshAppCommitPanel() {
-    const group = document.getElementById('commit-status-group');
-    if (!state.currentRepoFullName || !state.currentBranch) { group.style.display = 'none'; return; }
-    group.style.display = '';
-    const { owner, repo } = splitFullName(state.currentRepoFullName);
-    UI.renderAppCommitRow(AppLog.load(owner, repo, state.currentBranch));
-  }
-
-  // ---------------- Live GitHub Commit (always a fresh fetch) ----------------
-
-  async function handleLiveCommitClick() {
-    if (!state.currentRepoFullName || !state.currentBranch) return;
-    UI.showView('view-live-commit');
-    UI.renderLiveCommitLoading();
-    const { owner, repo } = splitFullName(state.currentRepoFullName);
-    const branch = state.currentBranch;
-    const appRecord = AppLog.load(owner, repo, branch);
-    try {
-      const ref = await GitHub.getRef(owner, repo, branch);
-      const headSha = ref.object.sha;
-      const commitInfo = await GitHub.getCommitDetail(owner, repo, headSha);
-
-      let reconciliation = null;
-      if (appRecord && appRecord.sha) {
-        if (headSha === appRecord.sha) {
-          reconciliation = { status: 'match' };
-          if (appRecord.verifyStatus !== 'confirmed') {
-            AppLog.setVerifyStatus(owner, repo, branch, appRecord.sha, 'confirmed');
-          }
-        } else {
-          const liveFiles = new Set((commitInfo.files || []).map(f => f.filename));
-          reconciliation = {
-            status: 'mismatch',
-            pending: appRecord.files.filter(f => !liveFiles.has(f.path)),
-            confirmed: appRecord.files.filter(f => liveFiles.has(f.path))
-          };
-        }
-      }
-
-      UI.renderLiveCommit({
-        branch, commitInfo, appRecord, reconciliation,
-        failedFiles: appRecord && appRecord.lastFailure ? appRecord.lastFailure.files : []
-      });
-      refreshAppCommitPanel();
-    } catch (e) {
-      UI.renderLiveCommitError(friendlyError(e));
-    }
-  }
-
-  // ---------------- Commit history (last 5 commits) ----------------
-
-  async function handleLastCommitClick() {
-    if (!state.currentRepoFullName || !state.currentBranch) return;
-    UI.showView('view-commit-files');
-    UI.renderCommitHistoryLoading();
-    const { owner, repo } = splitFullName(state.currentRepoFullName);
-    try {
-      const summaries = await GitHub.listCommits(owner, repo, state.currentBranch, 5);
-      // Full file-level detail (added/modified/deleted, +/- counts) needs a
-      // separate request per commit — fetch them in parallel.
-      const commits = await Promise.all(
-        summaries.map(s => GitHub.getCommitDetail(owner, repo, s.sha).catch(() => s))
-      );
-      UI.renderCommitHistory(commits);
-    } catch (e) {
-      UI.renderCommitHistory([]);
-      UI.toast(friendlyError(e));
     }
   }
 
@@ -673,7 +595,7 @@
           message: e.message,
           files: (e.failures || []).map(f => ({ path: f.path, error: (f.error && f.error.message) || 'Upload failed' }))
         });
-        refreshAppCommitPanel();
+        
       } else {
         // Something failed outside the per-file loop (tree/commit/ref step).
         UI.renderSyncSummary(successCount, changedItems.length - successCount);
@@ -699,14 +621,14 @@
     // the on-screen badge live once it catches up.
     const branch = state.currentBranch;
     AppLog.recordPush(owner, repo, branch, { sha: commitResult.sha, message, files: filesPushed });
-    refreshAppCommitPanel();
+    
     AppLog.verify(owner, repo, branch, commitResult.sha, (status) => {
       AppLog.setVerifyStatus(owner, repo, branch, commitResult.sha, status);
       if (document.getElementById('view-success').classList.contains('active')) {
         UI.updateSuccessVerify(status);
       }
       if (document.getElementById('view-dashboard').classList.contains('active')) {
-        refreshAppCommitPanel();
+        
       }
     });
 
@@ -719,7 +641,7 @@
   function resetToDashboard() {
     UI.showView('view-dashboard');
     UI.setNavActive('dashboard');
-    refreshAppCommitPanel();
+    
   }
 
   // ---------------- Filters / search ----------------
@@ -746,7 +668,6 @@
     UI.setNavActive(btn.dataset.nav);
     if (btn.dataset.nav === 'dashboard') UI.showView('view-dashboard');
     if (btn.dataset.nav === 'settings') { populateSettings(); UI.showView('view-settings'); }
-    if (btn.dataset.nav === 'history') UI.showView('view-dashboard'); // history surfaces via last-commit card
     if (btn.dataset.nav === 'howto') UI.showView('view-howto');
   }
 
@@ -837,14 +758,6 @@
     document.getElementById('back-to-dashboard-btn').addEventListener('click', resetToDashboard);
     document.getElementById('conflict-back-btn').addEventListener('click', resetToDashboard);
 
-    document.getElementById('live-commit-card').addEventListener('click', handleLiveCommitClick);
-    document.getElementById('live-commit-refresh-btn').addEventListener('click', handleLiveCommitClick);
-    document.getElementById('live-commit-back-btn').addEventListener('click', resetToDashboard);
-    document.getElementById('live-commit-body').addEventListener('click', (e) => {
-      if (e.target.closest('#live-commit-history-link')) handleLastCommitClick();
-    });
-    document.getElementById('view-live-from-success-btn').addEventListener('click', handleLiveCommitClick);
-    document.getElementById('commit-files-back-btn').addEventListener('click', resetToDashboard);
     document.getElementById('settings-back-btn').addEventListener('click', resetToDashboard);
 
     document.getElementById('settings-howto-link').addEventListener('click', () => {

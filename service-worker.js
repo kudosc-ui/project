@@ -20,11 +20,12 @@
    guarantees the old cache is deleted on activate, so nothing from a
    previous build can linger even in edge cases. */
 
-const CACHE_VERSION = 'gitsync-v6';
+const CACHE_VERSION = 'gitsync-v7';
 const APP_SHELL = [
   './',
   './index.html',
   './custom.html',
+  './commits.html',
   './style.css',
   './manifest.json',
   './js/auth.js',
@@ -39,6 +40,7 @@ const APP_SHELL = [
   './js/accounts.js',
   './js/app.js',
   './js/custom.js',
+  './js/commits.js',
   './js/theme.js',
   './icons/icon-48.png',
   './icons/icon-72.png',
