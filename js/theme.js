@@ -49,3 +49,21 @@
     });
   });
 })();
+
+
+/* Block long-press / right-click context menu and text-selection start
+   everywhere except inputs, textareas and .selectable areas. */
+(function () {
+  function allowed(el) {
+    return !!(el && el.closest && el.closest('input, textarea, [contenteditable="true"], .selectable'));
+  }
+  document.addEventListener('contextmenu', function (e) {
+    if (!allowed(e.target)) e.preventDefault();
+  });
+  document.addEventListener('selectstart', function (e) {
+    if (!allowed(e.target)) e.preventDefault();
+  });
+  document.addEventListener('dragstart', function (e) {
+    if (!allowed(e.target)) e.preventDefault();
+  });
+})();
