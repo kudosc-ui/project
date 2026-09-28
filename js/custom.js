@@ -99,7 +99,16 @@
       return;
     }
 
+    const cache = pcGet();
+    const queue = [];
     for (const repo of repos) {
+      const { owner, repo: rname } = splitFullName(repo.full_name);
+      const cached = cache[repo.full_name];
+      const published = !repo.private && (repo.has_pages || cached);
+      let extra = '';
+      if (repo.private) {
+        extra = `<div class="private-note">🔒 <b>Private repository</b> — GitSync can't publish private repos. Publish it from GitHub: <a href="${repo.html_url}/settings/pages" target="_blank" rel="noopener">Settings → Pages ↗</a></div>`;
+      }
       const row = document.createElement('div');
       row.className = 'file-row';
       row.innerHTML = `
@@ -110,15 +119,54 @@
         <div class="repo-row-actions">
           <button class="btn-link small" data-action="browse">Browse Files</button>
           <a class="btn-link small" href="${repo.html_url}" target="_blank" rel="noopener">Open on GitHub ↗</a>
-          ${!repo.private ? '<button class="btn-link small" data-action="publish">Publish ↗</button>' : ''}
+          ${!repo.private && !published ? '<button class="btn-link small" data-action="publish">Publish ↗</button>' : ''}
         </div>
-        <div class="publish-row hidden" data-role="publish-row"></div>
+        ${extra}
+        <div class="publish-row ${published ? '' : 'hidden'}" data-role="publish-row"></div>
       `;
+      const resultRow = row.querySelector('[data-role="publish-row"]');
+      if (published) {
+        revealPublishLink(resultRow, (cached && cached.url) || pagesUrl(owner, rname), cached && cached.status);
+        queue.push({ repo, owner, rname, resultRow });
+      }
       row.querySelector('[data-action="browse"]').addEventListener('click', () => browseRepo(repo.full_name));
       const publishBtn = row.querySelector('[data-action="publish"]');
-      if (publishBtn) publishBtn.addEventListener('click', () => handlePublishRepoRow(repo, publishBtn, row.querySelector('[data-role="publish-row"]')));
+      if (publishBtn) publishBtn.addEventListener('click', () => handlePublishRepoRow(repo, publishBtn, resultRow));
       container.appendChild(row);
     }
+    refreshPagesQueue(queue);
+  }
+
+  // Published links are remembered so they show instantly and never need
+  // the Publish button to be tapped again just to see the URL.
+  const PC_KEY = 'gitsync-pages-cache';
+  function pcGet() { try { return JSON.parse(localStorage.getItem(PC_KEY) || '{}'); } catch (e) { return {}; } }
+  function pcSet(full, url, status) {
+    const c = pcGet(); c[full] = { url, status: status || '' };
+    try { localStorage.setItem(PC_KEY, JSON.stringify(c)); } catch (e) { /* ignore */ }
+  }
+  function pagesUrl(owner, name) {
+    return name.toLowerCase() === `${owner.toLowerCase()}.github.io`
+      ? `https://${owner}.github.io/` : `https://${owner}.github.io/${name}/`;
+  }
+  async function refreshPagesQueue(queue) {
+    const workers = Array.from({ length: 3 }, async () => {
+      while (queue.length) {
+        const { repo, owner, rname, resultRow } = queue.shift();
+        try {
+          const pg = await GitHub.getPages(owner, rname);
+          const url = pg.html_url || pagesUrl(owner, rname);
+          pcSet(repo.full_name, url, pg.status);
+          revealPublishLink(resultRow, url, pg.status);
+        } catch (e) {
+          if (e && e.kind === 'not_found') { // Pages was turned off since
+            const c = pcGet(); delete c[repo.full_name];
+            try { localStorage.setItem(PC_KEY, JSON.stringify(c)); } catch (x) { /* ignore */ }
+          }
+        }
+      }
+    });
+    await Promise.all(workers);
   }
 
   // ---------------- Publish (GitHub Pages) for any existing public repo ----------------
@@ -133,8 +181,9 @@
     try {
       const pages = await GitHub.getPages(owner, repoName);
       const url = pages.html_url || `https://${owner}.github.io/${repoName === `${owner}.github.io` ? '' : repoName + '/'}`;
-      revealPublishLink(resultRow, url);
-      btn.textContent = 'Published ✓';
+      pcSet(repo.full_name, url, pages.status);
+      revealPublishLink(resultRow, url, pages.status);
+      btn.classList.add('hidden');
       return;
     } catch (e) {
       // 404 = not enabled yet, fall through and enable it below.
@@ -151,8 +200,9 @@
       const url = repoName.toLowerCase() === `${owner.toLowerCase()}.github.io`
         ? `https://${owner}.github.io/`
         : `https://${owner}.github.io/${repoName}/`;
-      revealPublishLink(resultRow, url);
-      btn.textContent = 'Published ✓';
+      pcSet(repo.full_name, url, 'building');
+      revealPublishLink(resultRow, url, 'building');
+      btn.classList.add('hidden');
       UI.toast('GitHub Pages enabled — it may take a minute to go live.');
     } catch (e) {
       btn.disabled = false;
@@ -161,10 +211,19 @@
     }
   }
 
-  function revealPublishLink(resultRow, url) {
+  function revealPublishLink(resultRow, url, status) {
     resultRow.classList.remove('hidden');
-    resultRow.innerHTML = `Live at <a href="${url}" target="_blank" rel="noopener">${UI.escapeHtml(url)}</a>`;
+    const building = status === 'building' || status === 'queued';
+    resultRow.innerHTML = `<span class="live-dot ${building ? 'building' : ''}"></span>${building ? 'Going live' : 'Live'} at <a href="${url}" target="_blank" rel="noopener">${UI.escapeHtml(url)}</a>
+      <button class="btn-link small" data-copy="${UI.escapeHtml(url)}" style="margin-left:6px">Copy</button>`;
   }
+  document.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-copy]');
+    if (!b) return;
+    if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy);
+    b.textContent = 'Copied ✓';
+    setTimeout(() => { b.textContent = 'Copy'; }, 1500);
+  });
 
   // ---------------- Create repository ----------------
 
@@ -237,7 +296,8 @@
     btn.disabled = true;
     document.getElementById('create-repo-success-card').classList.add('hidden');
     const progressCard = document.getElementById('create-repo-progress-card');
-    progressCard.classList.remove('hidden');
+    progressCard.classList.add('hidden');
+    UploadUI.open();
     setCreateProgress(5, zipFile ? 'Reading ZIP file…' : 'Creating repository…', '');
 
     try {
@@ -286,12 +346,13 @@
 
       setCreateProgress(100, 'Done', '');
       progressCard.classList.add('hidden');
-      showCreateSuccess(repo, owner, branch, isPrivate, skipped, tooLarge);
+      showCreateSuccess(repo, owner, branch, isPrivate, skipped, tooLarge, fileMap ? fileMap.size : 0);
       nameInput.value = '';
-      zipInput.value = '';
+      zipInput.value = ''; zipInput.dispatchEvent(new Event('change'));
       state.repos = []; // force a refresh next time the list is viewed
       loadRepoList();
     } catch (e) {
+      UploadUI.close();
       progressCard.classList.add('hidden');
       errEl.textContent = pendingRepoPush
         ? `Repository created, but the upload failed: ${friendlyError(e)}`
@@ -357,7 +418,8 @@
     errEl.classList.add('hidden');
     retryBtn.disabled = true;
     btn.disabled = true;
-    progressCard.classList.remove('hidden');
+    progressCard.classList.add('hidden');
+    UploadUI.open();
     setCreateProgress(35, 'Retrying upload…', '');
 
     try {
@@ -366,12 +428,13 @@
       progressCard.classList.add('hidden');
       retryBtn.classList.add('hidden');
       pendingRepoPush = null;
-      showCreateSuccess(repo, owner, branch, repo.private, skipped, tooLarge);
+      showCreateSuccess(repo, owner, branch, repo.private, skipped, tooLarge, fileMap ? fileMap.size : 0);
       document.getElementById('new-repo-name').value = '';
-      document.getElementById('new-repo-zip-input').value = '';
+      document.getElementById('new-repo-zip-input').value = ''; document.getElementById('new-repo-zip-input').dispatchEvent(new Event('change'));
       state.repos = [];
       loadRepoList();
     } catch (e) {
+      UploadUI.close();
       progressCard.classList.add('hidden');
       errEl.textContent = `Repository created, but the upload failed again: ${friendlyError(e)}`;
       errEl.classList.remove('hidden');
@@ -383,13 +446,26 @@
   }
 
   function setCreateProgress(pct, label, detail) {
+    UploadUI.progress(pct, label, detail);
     document.getElementById('create-repo-progress-bar').style.width = `${pct}%`;
     document.getElementById('create-repo-progress-percent').textContent = `${pct}%`;
     if (label != null) document.getElementById('create-repo-progress-label').textContent = label;
     if (detail != null) document.getElementById('create-repo-progress-detail').textContent = detail;
   }
 
-  function showCreateSuccess(repo, owner, branch, isPrivate, skipped, tooLarge) {
+  function showCreateSuccess(repo, owner, branch, isPrivate, skipped, tooLarge, fileCount) {
+    const skipCount0 = (skipped || []).length + (tooLarge || []).length;
+    UploadUI.success({
+      repo, isPrivate, branch, fileCount,
+      note: skipCount0 ? `${skipCount0} file(s) were skipped (unsafe path, duplicate, or over the size limit).` : '',
+      onPublish: async () => {
+        await GitHub.enablePages(owner, repo.name, branch, '/');
+        const url = pagesUrl(owner, repo.name);
+        pcSet(repo.full_name, url, 'building');
+        return url;
+      },
+      onBrowse: () => browseRepo(repo.full_name)
+    });
     const card = document.getElementById('create-repo-success-card');
     card.classList.remove('hidden');
     document.getElementById('create-repo-result-name').textContent = repo.full_name;
@@ -714,8 +790,31 @@
 
   // ---------------- Wiring ----------------
 
+  function initDropzone() {
+    const input = document.getElementById('new-repo-zip-input');
+    const dz = document.getElementById('zip-dz');
+    const chip = document.getElementById('zip-chip');
+    const refresh = () => {
+      const f = input.files && input.files[0];
+      chip.classList.toggle('hidden', !f);
+      dz.classList.toggle('hidden', !!f);
+      if (f) document.getElementById('zip-chip-name').textContent = `📦 ${f.name} · ${fmtSize(f.size)}`;
+    };
+    input.addEventListener('change', refresh);
+    document.getElementById('zip-chip-remove').addEventListener('click', () => { input.value = ''; refresh(); });
+    ['dragenter', 'dragover'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove('over'); }));
+    dz.addEventListener('drop', e => {
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!f) return;
+      if (!/\.zip$/i.test(f.name)) { UI.toast('Please drop a .zip file.'); return; }
+      const dt = new DataTransfer(); dt.items.add(f); input.files = dt.files; refresh();
+    });
+  }
+
   function init() {
     boot();
+    initDropzone();
 
     document.getElementById('create-repo-btn').addEventListener('click', handleCreateRepo);
     document.getElementById('create-repo-retry-btn').addEventListener('click', handleRetryRepoUpload);

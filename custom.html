@@ -101,8 +101,10 @@
           <label class="segmented-opt"><input type="radio" name="new-repo-visibility" value="private"><span>Private</span></label>
         </div>
 
-        <label class="field-label" for="new-repo-zip-input">Project ZIP <span class="hint-inline">(optional — extracted and pushed as the first commit)</span></label>
-        <input type="file" id="new-repo-zip-input" accept=".zip,application/zip">
+        <label class="field-label">Project ZIP <span class="hint-inline">(optional — extracted and pushed as the first commit)</span></label>
+        <label class="dz" id="zip-dz" for="new-repo-zip-input"><span class="dz-ico">📦</span><b>Drop your ZIP here or tap to browse</b><small>Your whole project in one .zip file</small></label>
+        <input type="file" id="new-repo-zip-input" accept=".zip,application/zip" class="hidden">
+        <div class="dz-file hidden" id="zip-chip"><span id="zip-chip-name"></span><button type="button" class="btn-link small" id="zip-chip-remove">Remove</button></div>
 
         <button id="create-repo-btn" class="btn btn-primary btn-block" style="margin-top:16px">Create Repository</button>
         <p id="create-repo-error" class="error-text hidden"></p>
@@ -250,6 +252,7 @@
 <script src="js/commit.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/accounts.js"></script>
+<script src="js/upload-ui.js"></script>
 <script src="js/custom.js"></script>
 <script src="js/theme.js"></script>
 <script>

@@ -69,6 +69,13 @@
     <p id="auth-error" class="error-text hidden"></p>
 
     <button id="how-to-token" class="btn-link">How do I get a token?</button>
+
+    <a href="setup.html" class="setup-link-card">
+      <span>📘</span>
+      <span><strong>How to Setup GitSync — step by step</strong><small id="setup-url">setup.html</small></span>
+      <span>›</span>
+    </a>
+    <button id="copy-setup-link" class="btn-link small" type="button">Copy guide link</button>
   </div>
 </section>
 
@@ -527,6 +534,7 @@
           <div class="howto-tip">
             <strong>Using a "Fine-grained" token instead?</strong> Set <strong>Repository access</strong> to <strong>All repositories</strong> (not "Only select repositories") and give it <strong>Contents: Read and write</strong> permission. Otherwise a repository you create inside GitSync won't be covered by the token yet, and uploads to it will fail.
           </div>
+          <a href="setup.html" class="btn btn-primary btn-block" style="margin-bottom:10px">Open the step-by-step Setup guide</a>
           <button type="button" id="howto-open-token-page" class="btn btn-secondary btn-block" style="margin-top:14px">Open GitHub's Token Page</button>
         </div>
 
@@ -699,6 +707,18 @@
 <script src="js/accounts.js"></script>
 <script src="js/app.js"></script>
 <script src="js/theme.js"></script>
+<script>
+(function(){
+  var url = new URL('setup.html', location.href).href;
+  var label = document.getElementById('setup-url'); if (label) label.textContent = url;
+  var btn = document.getElementById('copy-setup-link');
+  if (btn) btn.addEventListener('click', function(){
+    if (navigator.clipboard) navigator.clipboard.writeText(url);
+    btn.textContent = 'Link copied ✓';
+    setTimeout(function(){ btn.textContent = 'Copy guide link'; }, 1600);
+  });
+})();
+</script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
