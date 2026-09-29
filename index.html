@@ -199,48 +199,69 @@
 
       <!-- ============ UPLOAD PROGRESS VIEW ============ -->
       <section id="view-progress" class="view">
-        <div class="card center-card">
+        <div class="card center-card prog-card">
+          <div class="prog-icon"><span class="prog-icon-ring"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          </div>
           <div id="progress-label" class="progress-label">Reading project…</div>
           <div class="progress-track"><div id="progress-bar" class="progress-fill" style="width:0%"></div></div>
           <div id="progress-percent" class="progress-percent">0%</div>
           <div id="progress-detail" class="progress-detail"></div>
+          <div class="prog-note">Comparing your files with GitHub. This only reads — nothing is changed yet.</div>
         </div>
       </section>
 
       <!-- ============ ZIP EXTRACTION PROGRESS VIEW ============ -->
       <section id="view-zip-progress" class="view">
-        <div class="card center-card">
+        <div class="card center-card prog-card">
+          <div class="prog-icon"><span class="prog-icon-ring"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>
+          </div>
           <div id="zip-progress-label" class="progress-label">Extracting ZIP file…</div>
           <div class="progress-track"><div id="zip-progress-bar" class="progress-fill" style="width:0%"></div></div>
           <div id="zip-progress-percent" class="progress-percent">0%</div>
           <div id="zip-progress-detail" class="progress-detail"></div>
+          <div class="prog-note">Unpacking your ZIP on this device. Nothing is uploaded yet.</div>
         </div>
       </section>
 
       <!-- ============ COMPARE VIEW ============ -->
       <section id="view-compare" class="view">
-        <div class="card">
-          <div class="summary-title">Changes detected</div>
-          <div class="summary-counts">
-            <span class="count added" id="count-added">+0 Added</span>
-            <span class="count modified" id="count-modified">~0 Modified</span>
-            <span class="count deleted" id="count-deleted">-0 Deleted</span>
-            <span class="count unchanged" id="count-unchanged">=0 Unchanged</span>
+        <div class="page-header cmp-header">
+          <button id="compare-back-btn" class="icon-btn back-btn" aria-label="Cancel and go back" title="Cancel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
+          <div class="page-header-title">
+            <div class="page-header-title-main">Review changes</div>
+            <div class="page-header-title-sub" id="cmp-sub">—</div>
+          </div>
+        </div>
+
+        <div class="cmp-hero">
+          <div class="cmp-hero-top">
+            <div class="cmp-hero-total"><b id="cmp-total">0</b><span id="cmp-total-label">files will change</span></div>
+            <div class="cmp-hero-unchanged"><b id="count-unchanged">0</b><span>already up to date</span></div>
+          </div>
+          <div class="cmp-bar" id="cmp-bar" aria-hidden="true"><i class="a"></i><i class="m"></i><i class="d"></i></div>
+          <div class="cmp-stats">
+            <div class="cmp-stat added"><span class="cmp-stat-ico">+</span><b id="count-added">0</b><span>Added</span></div>
+            <div class="cmp-stat modified"><span class="cmp-stat-ico">~</span><b id="count-modified">0</b><span>Modified</span></div>
+            <div class="cmp-stat deleted"><span class="cmp-stat-ico">−</span><b id="count-deleted">0</b><span>Deleted</span></div>
           </div>
         </div>
 
         <div class="filter-row">
           <div class="chip-group" id="filter-chips">
-            <button class="chip active" data-filter="all">All</button>
-            <button class="chip" data-filter="added">Added</button>
-            <button class="chip" data-filter="modified">Modified</button>
-            <button class="chip" data-filter="deleted">Deleted</button>
+            <button class="chip active" data-filter="all">All <em id="chip-all">0</em></button>
+            <button class="chip" data-filter="added">Added <em id="chip-added">0</em></button>
+            <button class="chip" data-filter="modified">Modified <em id="chip-modified">0</em></button>
+            <button class="chip" data-filter="deleted">Deleted <em id="chip-deleted">0</em></button>
           </div>
-          <input type="text" id="file-search" placeholder="Search changed files…">
+          <input type="text" id="file-search" placeholder="Search changed files…" autocomplete="off" spellcheck="false">
         </div>
 
         <div id="deletions-warning" class="card warning-card hidden">
-          <div class="card-title">Files that will be deleted</div>
+          <div class="warn-head"><span class="warn-ico">!</span><div><div class="warn-title">Files that will be deleted</div><div class="warn-sub">These exist on GitHub but not in your upload.</div></div></div>
           <div id="deletions-list"></div>
           <label class="checkbox-row">
             <input type="checkbox" id="confirm-deletions">
@@ -251,48 +272,56 @@
         <div id="file-list" class="file-list"></div>
 
         <div class="sticky-action">
-          <button id="review-continue-btn" class="btn btn-primary btn-block">Review & Commit</button>
+          <button id="review-continue-btn" class="btn btn-primary btn-block">Review &amp; Commit</button>
         </div>
       </section>
 
       <!-- ============ COMMIT VIEW ============ -->
       <section id="view-commit" class="view">
-        <div class="card">
-          <div class="summary-title">Review Changes</div>
-          <div id="commit-file-count" class="commit-file-count">0 files changed</div>
+        <div class="cmp-hero commit-hero">
+          <div class="cmp-hero-top">
+            <div class="cmp-hero-total"><b id="commit-total">0</b><span>files ready to commit</span></div>
+          </div>
+          <div id="commit-file-count" class="hidden"></div>
           <div class="summary-counts">
             <span class="count added" id="commit-count-added">0 Added</span>
             <span class="count modified" id="commit-count-modified">0 Modified</span>
             <span class="count deleted" id="commit-count-deleted">0 Deleted</span>
           </div>
+          <div class="commit-target" id="commit-target"></div>
         </div>
 
         <div class="card">
-          <label class="field-label">Commit message</label>
-          <input type="text" id="commit-message" placeholder="Describe your changes">
+          <label class="field-label" for="commit-message" style="margin-top:0">Commit message</label>
+          <input type="text" id="commit-message" placeholder="Describe your changes" autocomplete="off">
+          <p class="hint">All files go up together as one clean commit.</p>
         </div>
 
         <p id="commit-error" class="error-text hidden"></p>
 
         <div class="sticky-action two-btn">
-          <button id="cancel-commit-btn" class="btn btn-secondary">Cancel</button>
+          <button id="cancel-commit-btn" class="btn btn-secondary">Back</button>
           <button id="commit-btn" class="btn btn-primary">Commit Everything</button>
         </div>
       </section>
 
-      <!-- ============ SYNC RESULTS VIEW ============ -->
+      <!-- ============ SYNC RESULTS VIEW (live upload) ============ -->
       <section id="view-sync-results" class="view">
-        <div class="card">
-          <div class="summary-title">Sync Results</div>
-          <div class="summary-counts">
-            <span class="count added" id="results-count-success">0 Succeeded</span>
-            <span class="count deleted" id="results-count-failed">0 Failed</span>
+        <div class="sr-hero" id="sr-hero" data-state="running">
+          <div class="sr-ring" id="sr-ring" style="--p:0"><div class="sr-ring-in"><span id="sr-pct">0%</span></div></div>
+          <div class="sr-hero-text">
+            <div class="sr-title" id="sr-title">Uploading to GitHub…</div>
+            <div class="sr-sub" id="sr-sub">Keep this screen open until it finishes.</div>
+            <div class="summary-counts">
+              <span class="count added" id="results-count-success">0 Succeeded</span>
+              <span class="count deleted" id="results-count-failed">0 Failed</span>
+            </div>
           </div>
         </div>
 
-        <div id="sync-results-list" class="file-list"></div>
+        <div id="sync-results-banner" class="sr-banner hidden"></div>
 
-        <div id="sync-results-banner" class="card center-card hidden"></div>
+        <div id="sync-results-list" class="file-list"></div>
 
         <div class="sticky-action two-btn">
           <button id="results-back-btn" class="btn btn-secondary">Back to Dashboard</button>
@@ -303,17 +332,25 @@
       <!-- ============ SUCCESS VIEW (full-screen) ============ -->
       <section id="view-success" class="view view-success-full">
         <div class="success-hero">
-          <div class="success-hero-badge"><span class="success-check">✓</span></div>
+          <div class="success-confetti" id="success-confetti" aria-hidden="true"></div>
+          <div class="success-hero-badge">
+            <svg class="success-tick" viewBox="0 0 52 52" aria-hidden="true"><path d="M14 27l8 8 16-17"/></svg>
+          </div>
           <div class="success-hero-title">Pushed successfully</div>
           <div id="success-message" class="success-hero-msg">—</div>
-          <div class="success-hero-meta">
-            <span id="success-file-count">—</span>
-            <span class="success-hero-dot">·</span>
-            <code id="success-sha">—</code>
-            <span class="success-hero-dot">·</span>
-            <span>just now</span>
+          <div class="success-hero-chips">
+            <span class="s-chip" id="success-repo-chip">—</span>
+            <span class="s-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg><span id="success-branch">—</span></span>
+            <button type="button" class="s-chip s-chip-btn" id="success-sha-btn" title="Copy commit hash"><code id="success-sha">—</code></button>
           </div>
         </div>
+
+        <div class="success-stats" id="success-stats">
+          <div class="ss added"><b id="success-added">0</b><span>Added</span></div>
+          <div class="ss modified"><b id="success-modified">0</b><span>Modified</span></div>
+          <div class="ss deleted"><b id="success-deleted">0</b><span>Deleted</span></div>
+        </div>
+        <span id="success-file-count" class="hidden">—</span>
 
         <div class="sync-status-block">
           <div class="sync-status-row">
@@ -338,9 +375,9 @@
         </div>
 
         <div class="success-actions">
-          <a id="view-live-from-success-btn" class="btn btn-secondary btn-block" href="commits.html">Open Commits Page</a>
-          <a id="view-on-github-btn" class="btn btn-secondary btn-block" href="#" target="_blank" rel="noopener">View on GitHub.com</a>
           <button id="back-to-dashboard-btn" class="btn btn-primary btn-block">Back to Dashboard</button>
+          <a id="view-on-github-btn" class="btn btn-secondary btn-block" href="#" target="_blank" rel="noopener">View on GitHub.com</a>
+          <a id="view-live-from-success-btn" class="btn btn-secondary btn-block" href="commits.html">Open Commits Page</a>
         </div>
       </section>
 
@@ -694,6 +731,7 @@
      client-side. Loaded from a pinned version on cdnjs; everything else in
      this app remains hand-written vanilla JS. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="js/offline.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/github.js"></script>
 <script src="js/applog.js"></script>
@@ -717,34 +755,6 @@
     setTimeout(function(){ btn.textContent = 'Copy guide link'; }, 1600);
   });
 })();
-</script>
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function () {
-    navigator.serviceWorker.register('service-worker.js').then(function (reg) {
-      // If an updated worker is already waiting (e.g. this tab was open
-      // during an update), activate it right away instead of leaving the
-      // page on stale assets until the tab is closed and reopened.
-      if (reg.waiting) reg.waiting.postMessage('skipWaiting');
-      reg.addEventListener('updatefound', function () {
-        var fresh = reg.installing;
-        if (!fresh) return;
-        fresh.addEventListener('statechange', function () {
-          if (fresh.state === 'installed' && navigator.serviceWorker.controller) {
-            fresh.postMessage('skipWaiting');
-          }
-        });
-      });
-    }).catch(function () { /* ignore */ });
-
-    var reloaded = false;
-    navigator.serviceWorker.addEventListener('controllerchange', function () {
-      if (reloaded) return;
-      reloaded = true;
-      window.location.reload();
-    });
-  });
-}
 </script>
 </body>
 </html>

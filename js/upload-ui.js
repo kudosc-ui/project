@@ -1,6 +1,8 @@
 /* UploadUI — full-screen upload progress + success page (shared by pages). */
 const UploadUI = (() => {
   let el = null;
+  let busy = false;
+  window.GitSyncIsBusy = () => busy;
   const STEPS = ['Reading ZIP', 'Creating repository', 'Uploading files', 'Finishing up'];
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -9,6 +11,7 @@ const UploadUI = (() => {
     return el;
   }
   function open() {
+    busy = true;
     const r = root();
     r.classList.remove('hidden');
     r.innerHTML = `<div class="up-card">
@@ -29,7 +32,7 @@ const UploadUI = (() => {
       li.className = i < cur ? 'done' : i === cur ? 'active' : '';
     });
   }
-  function close() { if (el) el.classList.add('hidden'); }
+  function close() { busy = false; if (el) el.classList.add('hidden'); }
 
   function confetti() {
     const colors = ['#5b7cff', '#8b5cf6', '#3ecf8e', '#e2b93b', '#f56565'];
@@ -39,6 +42,7 @@ const UploadUI = (() => {
 
   /** opts: { repo, isPrivate, branch, fileCount, note, onPublish: async () => url, onBrowse } */
   function success(o) {
+    busy = false;
     const r = root();
     r.classList.remove('hidden');
     const live = o.isPrivate
@@ -46,7 +50,7 @@ const UploadUI = (() => {
          <a class="btn btn-secondary btn-block" target="_blank" rel="noopener" href="${esc(o.repo.html_url)}/settings/pages">Open Pages settings on GitHub ↗</a></div>`
       : `<div class="up-live" id="up-live"><button class="btn btn-secondary btn-block" id="up-publish">🌐 Publish with GitHub Pages</button></div>`;
     r.innerHTML = `<div class="up-card up-success"><div class="up-confetti">${confetti()}</div>
-      <div class="up-badge"><span>✓</span></div>
+      <div class="up-badge"><svg class="success-tick" viewBox="0 0 52 52" aria-hidden="true"><path d="M14 27l8 8 16-17"/></svg></div>
       <div class="up-title big">Upload complete!</div>
       <div class="up-detail">Your project is now live on GitHub.</div>
       <div class="up-repo"><code>${esc(o.repo.full_name)}</code><button class="btn-link small" id="up-copy">Copy</button></div>

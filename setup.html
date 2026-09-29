@@ -68,4 +68,4 @@ document.getElementById('steps').innerHTML=h;var p=Math.round(done.length/S.leng
 document.getElementById('pl').textContent=done.length+' of '+S.length+' steps done';document.getElementById('pp').textContent=p+'%';document.getElementById('pb').style.width=p+'%'}
 document.addEventListener('change',function(e){var n=e.target.dataset&&e.target.dataset.n;if(n==null)return;n=+n;var i=done.indexOf(n);if(e.target.checked&&i<0)done.push(n);if(!e.target.checked&&i>-1)done.splice(i,1);try{localStorage.setItem('gitsync-setup',JSON.stringify(done))}catch(x){}render()});
 render();
-</script></body></html>
+</script><script src="js/offline.js"></script></body></html>

@@ -33,6 +33,7 @@ const GitHub = (() => {
     } catch (e) {
       const err = new Error('Network error while contacting GitHub.');
       err.kind = 'network';
+      try { window.dispatchEvent(new Event('gitsync:network-error')); } catch (_) { /* ignore */ }
       throw err;
     }
 

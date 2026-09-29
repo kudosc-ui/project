@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!--
+  GitSync — © 2026 CodeZing (https://youtube.com/@kudosc?si=au2Bagg75VuP_jEr)
+  All rights reserved. See LICENSE for full terms.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GitSync — You're offline</title>
+<script>
+(function(){try{var t=localStorage.getItem('gitsync-theme');if(!t)t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+</script>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon.ico" sizes="any">
+<meta name="theme-color" content="#5b7cff">
+<style>
+:root{--bg:#0a0c11;--surface:#12151d;--border:#232836;--text:#e8eaf0;--dim:#8b93a7;--accent:#5b7cff;--accent2:#8b5cf6;--soft:rgba(91,124,255,.14);--red:#f56565}
+html[data-theme="light"]{--bg:#f4f5f9;--surface:#fff;--border:#cfd4e4;--text:#1a1d29;--dim:#545b6e;--accent:#4f6bf0;--accent2:#7c4fea;--soft:rgba(79,107,240,.1);--red:#dc3d3d}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent;background-image:radial-gradient(620px 360px at 50% -8%,var(--soft),transparent 70%)}
+.card{width:100%;max-width:400px;text-align:center}
+.icon{position:relative;width:112px;height:112px;margin:0 auto 26px;display:flex;align-items:center;justify-content:center;color:var(--accent)}
+.icon:before{content:"";position:absolute;inset:0;border-radius:50%;background:var(--surface);border:1px solid var(--border)}
+.icon svg{position:relative;width:52px;height:52px}
+.p{position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);opacity:0;animation:pulse 2.6s ease-out infinite}
+.p2{animation-delay:1.3s}
+@keyframes pulse{0%{transform:scale(1);opacity:.45}100%{transform:scale(1.7);opacity:0}}
+h1{margin:0 0 8px;font-size:26px;letter-spacing:-.02em}
+p{margin:0 0 20px;color:var(--dim);line-height:1.6}
+ul{list-style:none;margin:0 0 24px;padding:14px 16px;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;gap:10px;font-size:14px}
+li{display:flex;align-items:center;gap:10px}
+li:before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+button{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:15px;border:0;border-radius:12px;color:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 8px 22px -8px var(--accent);transition:transform .15s}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.6;cursor:default}
+button svg{width:19px;height:19px}
+button.spin svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.status{min-height:20px;margin:14px 0 0;font-size:13px}
+.status.err{color:var(--red)}
+.foot{margin:18px 0 0;font-size:12px;color:var(--dim)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="icon"><span class="p"></span><span class="p p2"></span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8.8a15 15 0 0 1 4.2-2.6"/><path d="M22 8.8a15 15 0 0 0-9.3-4.6"/><path d="M5 12.9a10 10 0 0 1 3.6-2.1"/><path d="M19 12.9a10 10 0 0 0-4.7-2.7"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M12 20h.01"/><path d="M3 3l18 18"/></svg>
+  </div>
+  <h1>You’re offline</h1>
+  <p>GitSync can’t reach the internet. Check your connection, then tap Refresh.</p>
+  <ul>
+    <li>Turn off Airplane mode</li>
+    <li>Reconnect to Wi‑Fi or turn on mobile data</li>
+    <li>Move to a spot with a stronger signal</li>
+  </ul>
+  <button id="refresh" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+    <span id="label">Refresh</span>
+  </button>
+  <div class="status" id="status" aria-live="polite"></div>
+  <div class="foot">Your GitHub account stays saved on this device.</div>
+</main>
+<script>
+(function(){
+  var btn=document.getElementById('refresh'),label=document.getElementById('label'),status=document.getElementById('status');
+  function ping(){
+    return new Promise(function(resolve){
+      var done=false,c=window.AbortController?new AbortController():null;
+      var t=setTimeout(function(){if(done)return;done=true;if(c)c.abort();resolve(false);},6000);
+      fetch('manifest.json?__ping='+Date.now(),{cache:'no-store',signal:c?c.signal:undefined})
+        .then(function(r){if(done)return;done=true;clearTimeout(t);resolve(r.status<500);})
+        .catch(function(){if(done)return;done=true;clearTimeout(t);resolve(false);});
+    });
+  }
+  function go(){
+    if(/offline\.html$/.test(location.pathname)) location.replace('./index.html'); else location.reload();
+  }
+  btn.addEventListener('click',function(){
+    btn.disabled=true;btn.classList.add('spin');label.textContent='Checking connection\u2026';status.textContent='';status.className='status';
+    ping().then(function(ok){
+      if(ok){go();return;}
+      btn.disabled=false;btn.classList.remove('spin');label.textContent='Refresh';
+      status.textContent='Still no connection. Check Wi\u2011Fi or mobile data and try again.';status.className='status err';
+    });
+  });
+  window.addEventListener('online',function(){ping().then(function(ok){if(ok){status.textContent='Connection restored \u2014 tap Refresh.';status.className='status';}});});
+})();
+</script>
+</body>
+</html>

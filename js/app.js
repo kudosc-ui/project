@@ -25,8 +25,13 @@
     filter: 'all',
     searchTerm: '',
     branches: [],                 // branches of the currently selected repo, for the branch picker
-    defaultBranchName: null
+    defaultBranchName: null,
+    busy: false,                  // true while files are being read or pushed — blocks auto-reload / tab close
+    reposFailed: false
   };
+
+  // Lets offline.js / the service-worker updater know not to interrupt work in progress.
+  window.GitSyncIsBusy = () => state.busy;
 
   // ---------------- Helpers ----------------
 
@@ -137,6 +142,7 @@
     repoSelect.innerHTML = '<option>Loading repositories…</option>';
     document.getElementById('repo-select-value').textContent = 'Loading repositories…';
     repoTrigger.classList.add('disabled');
+    state.reposFailed = false;
     try {
       state.repos = await GitHub.listRepos();
       UI.renderRepoOptions(repoSelect, state.repos);
@@ -149,6 +155,9 @@
       document.getElementById('upload-zip-btn').disabled = false;
       document.getElementById('upload-single-btn').disabled = false;
     } catch (e) {
+      state.reposFailed = true;
+      document.getElementById('repo-select-value').textContent = 'Couldn\u2019t load \u2014 tap to retry';
+      repoTrigger.classList.remove('disabled');
       UI.toast(friendlyError(e));
     }
   }
@@ -172,6 +181,7 @@
 
   function openRepoPicker() {
     if (document.getElementById('repo-select-trigger').classList.contains('disabled')) return;
+    if (state.reposFailed) { enterApp(state.user); return; }
     const repoSelect = document.getElementById('repo-select');
     const items = state.repos.map(r => ({
       value: r.full_name,
@@ -399,6 +409,15 @@
   async function proceedWithFileMap(rootName, fileMap, skipped, tooLarge, forceSyncMode) {
     UI.showView('view-progress');
     UI.setProgress(0, 'Reading project…', '');
+    state.busy = true;
+    try {
+      await runProceed(rootName, fileMap, skipped, tooLarge, forceSyncMode);
+    } finally {
+      state.busy = false;
+    }
+  }
+
+  async function runProceed(rootName, fileMap, skipped, tooLarge, forceSyncMode) {
     state.uploadedFileMap = fileMap;
     state.uploadedRootName = rootName;
 
@@ -419,6 +438,7 @@
       localHashes.set(path, sha);
       const pct = Math.round(((i + 1) / entries.length) * 55);
       UI.setProgress(pct, 'Reading project…', `${i + 1} of ${entries.length} files detected`);
+      if (i % 8 === 7) await new Promise(r => setTimeout(r, 0)); // let the screen repaint
     }
     state.localHashes = localHashes;
 
@@ -438,6 +458,11 @@
 
   function showCompareView() {
     UI.showView('view-compare');
+    window.scrollTo({ top: 0 });
+    state.filter = 'all'; state.searchTerm = '';
+    document.querySelectorAll('#filter-chips .chip').forEach(c => c.classList.toggle('active', c.dataset.filter === 'all'));
+    document.getElementById('file-search').value = '';
+    document.getElementById('cmp-sub').textContent = `${state.currentRepoFullName} \u00b7 ${state.currentBranch}`;
     UI.renderSummaryCounts(state.diff);
     UI.renderDeletionsWarning(state.diff);
     renderFileListView();
@@ -445,7 +470,9 @@
     const continueBtn = document.getElementById('review-continue-btn');
     const needsConfirm = state.diff.deleted.length > 0;
     document.getElementById('confirm-deletions').checked = false;
-    continueBtn.disabled = false; // enabled always; we check on click
+    const total = state.diff.added.length + state.diff.modified.length + state.diff.deleted.length;
+    continueBtn.disabled = total === 0;
+    continueBtn.textContent = total === 0 ? 'Nothing to commit' : `Review & Commit (${total})`;
   }
 
   function renderFileListView() {
@@ -522,6 +549,9 @@
     }
     UI.showView('view-commit');
     document.getElementById('commit-file-count').textContent = `${totalChanges} files changed`;
+    document.getElementById('commit-total').textContent = totalChanges;
+    document.getElementById('commit-target').textContent = `${state.currentRepoFullName} \u00b7 ${state.currentBranch}`;
+    window.scrollTo({ top: 0 });
     document.getElementById('commit-count-added').textContent = `${state.diff.added.length} Added`;
     document.getElementById('commit-count-modified').textContent = `${state.diff.modified.length} Modified`;
     document.getElementById('commit-count-deleted').textContent = `${state.diff.deleted.length} Deleted`;
@@ -545,6 +575,9 @@
 
     const commitBtn = document.getElementById('commit-btn');
     commitBtn.disabled = true;
+    state.busy = true;
+    const backBtn = document.getElementById('results-back-btn');
+    backBtn.disabled = true;
 
     const { owner, repo } = splitFullName(state.currentRepoFullName);
     const changedItems = [...state.diff.added, ...state.diff.modified, ...state.diff.deleted];
@@ -552,6 +585,7 @@
     // Show the sync-results page immediately with every file pending, then
     // fill in success/failed as each one is processed.
     UI.showView('view-sync-results');
+    window.scrollTo({ top: 0 });
     const resultsContainer = document.getElementById('sync-results-list');
     UI.initSyncResultsList(resultsContainer, changedItems.map(i => ({ path: i.path, status: 'pending' })));
     document.getElementById('sync-results-banner').classList.add('hidden');
@@ -603,6 +637,8 @@
       }
     } finally {
       commitBtn.disabled = false;
+      backBtn.disabled = false;
+      state.busy = false;
     }
   }
 
@@ -612,7 +648,9 @@
       message,
       sha: commitResult.sha,
       files: filesPushed,
-      githubUrl: `https://github.com/${owner}/${repo}/commit/${commitResult.sha}`
+      githubUrl: `https://github.com/${owner}/${repo}/commit/${commitResult.sha}`,
+      repoName: `${owner}/${repo}`,
+      branch: state.currentBranch
     });
 
     // The app's own side is done the moment we get here — record it
@@ -641,7 +679,7 @@
   function resetToDashboard() {
     UI.showView('view-dashboard');
     UI.setNavActive('dashboard');
-    
+    window.scrollTo({ top: 0 });
   }
 
   // ---------------- Filters / search ----------------
@@ -752,6 +790,7 @@
     document.getElementById('file-search').addEventListener('input', handleSearchInput);
     document.getElementById('review-continue-btn').addEventListener('click', handleReviewContinue);
 
+    document.getElementById('compare-back-btn').addEventListener('click', resetToDashboard);
     document.getElementById('cancel-commit-btn').addEventListener('click', () => UI.showView('view-compare'));
     document.getElementById('commit-btn').addEventListener('click', handleCommit);
 

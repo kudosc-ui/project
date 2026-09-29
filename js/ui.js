@@ -134,10 +134,22 @@ const UI = (() => {
   }
 
   function renderSummaryCounts(diff) {
-    document.getElementById('count-added').textContent = `+${diff.added.length} Added`;
-    document.getElementById('count-modified').textContent = `~${diff.modified.length} Modified`;
-    document.getElementById('count-deleted').textContent = `-${diff.deleted.length} Deleted`;
-    document.getElementById('count-unchanged').textContent = `=${diff.unchanged.length} Unchanged`;
+    const a = diff.added.length, m = diff.modified.length, d = diff.deleted.length;
+    const total = a + m + d;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('count-added', a); set('count-modified', m); set('count-deleted', d);
+    set('count-unchanged', diff.unchanged.length);
+    set('cmp-total', total);
+    set('cmp-total-label', total === 1 ? 'file will change' : 'files will change');
+    set('chip-all', total); set('chip-added', a); set('chip-modified', m); set('chip-deleted', d);
+    const bar = document.getElementById('cmp-bar');
+    if (bar) {
+      const pct = (n) => total ? (n / total * 100) : 0;
+      bar.querySelector('.a').style.width = pct(a) + '%';
+      bar.querySelector('.m').style.width = pct(m) + '%';
+      bar.querySelector('.d').style.width = pct(d) + '%';
+      bar.classList.toggle('empty', !total);
+    }
   }
 
   function renderDeletionsWarning(diff) {
@@ -145,7 +157,26 @@ const UI = (() => {
     const list = document.getElementById('deletions-list');
     if (!diff.deleted.length) { box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
-    list.innerHTML = diff.deleted.map(d => `<div class="del-item">- ${escapeHtml(d.path)}</div>`).join('');
+    list.innerHTML = diff.deleted.slice(0, 200).map(d => `<div class="del-item">${escapeHtml(d.path)}</div>`).join('') +
+      (diff.deleted.length > 200 ? `<div class="del-item more">+ ${diff.deleted.length - 200} more files</div>` : '');
+  }
+
+  function splitPath(path) {
+    const i = path.lastIndexOf('/');
+    return i < 0 ? { dir: '', name: path } : { dir: path.slice(0, i + 1), name: path.slice(i + 1) };
+  }
+
+  const STATUS_GLYPH = { added: '+', modified: '~', deleted: '\u2212', pending: '\u2022' };
+
+  function fileRowInner(path, status, badgeText) {
+    const { dir, name } = splitPath(path);
+    return `
+      <span class="fr-ico ${status}">${STATUS_GLYPH[status] || '\u2022'}</span>
+      <span class="fr-main">
+        <span class="fr-name">${escapeHtml(name)}</span>
+        ${dir ? `<span class="fr-dir">${escapeHtml(dir)}</span>` : ''}
+      </span>
+      <span class="status-badge ${status}" data-role="badge">${badgeText}</span>`;
   }
 
   function renderFileList(container, diff, filter, searchTerm, onOpenDiff) {
@@ -163,25 +194,42 @@ const UI = (() => {
     items.sort((a, b) => a.path.localeCompare(b.path));
 
     if (!items.length) {
-      container.innerHTML = '<div class="hint" style="padding:16px 0">No files match this filter.</div>';
+      container.innerHTML = `<div class="empty-state">
+        <div class="empty-ico">\u2713</div>
+        <div class="empty-title">${diff.added.length + diff.modified.length + diff.deleted.length === 0 ? 'Everything is already up to date' : 'No files match'}</div>
+        <div class="empty-sub">${diff.added.length + diff.modified.length + diff.deleted.length === 0 ? 'Your files are identical to what is on GitHub, so there is nothing to commit.' : 'Try a different filter or search term.'}</div>
+      </div>`;
       return;
     }
 
-    for (const item of items) {
-      const row = document.createElement('div');
-      row.className = 'file-row';
-      row.innerHTML = `
-        <div class="file-row-top">
-          <span class="status-badge ${item.status}">${badgeLabel(item.status)}</span>
-          <span class="file-path">${escapeHtml(item.path)}</span>
-        </div>
-        ${item.status !== 'deleted' ? '<div class="file-row-action">View Diff ▾</div>' : ''}
-      `;
-      if (item.status !== 'deleted') {
-        row.addEventListener('click', () => onOpenDiff(item));
+    // Render in chunks so a project with thousands of changed files never freezes the screen.
+    const CHUNK = 120;
+    let idx = 0;
+    const token = (container._renderToken = {});
+    function paint() {
+      if (container._renderToken !== token) return; // a newer render replaced this one
+      const frag = document.createDocumentFragment();
+      const end = Math.min(idx + CHUNK, items.length);
+      for (; idx < end; idx++) {
+        const item = items[idx];
+        const row = document.createElement('div');
+        const canDiff = item.status !== 'deleted';
+        row.className = 'file-row' + (canDiff ? ' clickable' : '');
+        row.innerHTML = fileRowInner(item.path, item.status, badgeLabel(item.status)) +
+          (canDiff ? '<span class="fr-chev" aria-hidden="true">\u203a</span>' : '');
+        if (canDiff) {
+          row.tabIndex = 0;
+          row.setAttribute('role', 'button');
+          row.setAttribute('aria-label', 'View diff for ' + item.path);
+          row.addEventListener('click', () => onOpenDiff(item));
+          row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDiff(item); } });
+        }
+        frag.appendChild(row);
       }
-      container.appendChild(row);
+      container.appendChild(frag);
+      if (idx < items.length) requestAnimationFrame(paint);
     }
+    paint();
   }
 
   /**
@@ -267,21 +315,34 @@ const UI = (() => {
 
   // ---------------- Sync results (per-file live status) ----------------
 
+  let syncTotal = 0, syncDone = 0, syncOk = 0, syncFail = 0;
+
+  function setSyncProgress(pct, title, sub) {
+    const ring = document.getElementById('sr-ring');
+    if (ring) ring.style.setProperty('--p', pct);
+    const p = document.getElementById('sr-pct'); if (p) p.textContent = pct + '%';
+    if (title != null) document.getElementById('sr-title').textContent = title;
+    if (sub != null) document.getElementById('sr-sub').textContent = sub;
+  }
+
   function initSyncResultsList(container, items) {
     container.innerHTML = '';
+    syncTotal = items.length; syncDone = 0; syncOk = 0; syncFail = 0;
+    const hero = document.getElementById('sr-hero');
+    if (hero) hero.setAttribute('data-state', 'running');
+    setSyncProgress(0, 'Uploading to GitHub\u2026', 'Keep this screen open until it finishes.');
+    document.getElementById('results-count-success').textContent = '0 Succeeded';
+    document.getElementById('results-count-failed').textContent = '0 Failed';
+    const frag = document.createDocumentFragment();
     for (const item of items) {
       const row = document.createElement('div');
       row.className = 'file-row result-row';
       row.dataset.path = item.path;
-      row.innerHTML = `
-        <div class="file-row-top">
-          <span class="status-badge pending" data-role="badge">${badgeLabel(item.status)}</span>
-          <span class="file-path">${escapeHtml(item.path)}</span>
-        </div>
-        <div class="file-row-action hidden" data-role="error"></div>
-      `;
-      container.appendChild(row);
+      row.innerHTML = fileRowInner(item.path, 'pending', 'WAITING') +
+        '<div class="fr-error hidden" data-role="error"></div>';
+      frag.appendChild(row);
     }
+    container.appendChild(frag);
   }
 
   function setSyncResultStatus(container, path, status, errorMessage) {
@@ -289,30 +350,52 @@ const UI = (() => {
     if (!row) return;
     const badge = row.querySelector('[data-role="badge"]');
     badge.className = `status-badge ${status}`;
-    badge.textContent = status === 'success' ? '✓ DONE' : status === 'failed' ? '✕ FAILED' : status.toUpperCase();
+    badge.textContent = status === 'success' ? '\u2713 DONE' : status === 'failed' ? '\u2715 FAILED' : status.toUpperCase();
+    const ico = row.querySelector('.fr-ico');
+    if (ico) {
+      ico.className = `fr-ico ${status}`;
+      ico.textContent = status === 'success' ? '\u2713' : status === 'failed' ? '\u2715' : '\u2022';
+    }
+    row.classList.add(status);
     if (errorMessage) {
       const errEl = row.querySelector('[data-role="error"]');
       errEl.textContent = errorMessage;
       errEl.classList.remove('hidden');
-      errEl.style.color = 'var(--red)';
     }
+    // Keep the row being worked on in view without yanking the page around.
+    syncDone++;
+    if (status === 'success') syncOk++; else if (status === 'failed') syncFail++;
+    document.getElementById('results-count-success').textContent = `${syncOk} Succeeded`;
+    document.getElementById('results-count-failed').textContent = `${syncFail} Failed`;
+    const pct = syncTotal ? Math.min(99, Math.round(syncDone / syncTotal * 100)) : 0;
+    setSyncProgress(pct);
   }
 
   function cssEscape(s) {
     return window.CSS && CSS.escape ? CSS.escape(s) : s.replace(/["\\]/g, '\\$&');
   }
 
-  function renderSyncSummary(successCount, failedCount) {    document.getElementById('results-count-success').textContent = `${successCount} Succeeded`;
+  function renderSyncSummary(successCount, failedCount) {
+    document.getElementById('results-count-success').textContent = `${successCount} Succeeded`;
     document.getElementById('results-count-failed').textContent = `${failedCount} Failed`;
+    const hero = document.getElementById('sr-hero');
     const banner = document.getElementById('sync-results-banner');
     const retryBtn = document.getElementById('results-retry-btn');
     banner.classList.remove('hidden');
     if (failedCount === 0) {
-      banner.innerHTML = `<div class="success-check">✓</div><div class="success-title">All files sent from GitSync successfully</div><p class="hint">GitHub may take a few seconds to reflect the change — check Live GitHub Commit on the next screen to confirm.</p>`;
+      if (hero) hero.setAttribute('data-state', 'ok');
+      setSyncProgress(100, 'All files uploaded', 'Creating your commit\u2026');
+      banner.className = 'sr-banner ok';
+      banner.innerHTML = `<span class="sr-banner-ico">\u2713</span><span>All files were sent from GitSync successfully. GitHub may take a few seconds to show the change.</span>`;
       retryBtn.classList.add('hidden');
     } else {
-      banner.innerHTML = `<div class="conflict-icon">⚠</div><div class="success-title">${failedCount} file(s) failed — no commit was created</div><p class="hint">Fix the issue below and try again. Nothing was changed on GitHub.</p>`;
+      if (hero) hero.setAttribute('data-state', 'fail');
+      setSyncProgress(Math.round(successCount / Math.max(1, successCount + failedCount) * 100), `${failedCount} file${failedCount === 1 ? '' : 's'} failed`, 'No commit was created \u2014 nothing changed on GitHub.');
+      banner.className = 'sr-banner fail';
+      banner.innerHTML = `<span class="sr-banner-ico">!</span><span>Fix the issue shown on the failed files below, then tap Try Again. Nothing was changed on GitHub.</span>`;
       retryBtn.classList.remove('hidden');
+      const firstFail = document.querySelector('#sync-results-list .result-row.failed');
+      if (firstFail && firstFail.scrollIntoView) firstFail.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
   }
 
@@ -337,19 +420,47 @@ const UI = (() => {
   // ---------------- Success view (full-screen) ----------------
 
   function fileRowHtml(path, status) {
+    const { dir, name } = splitPath(path);
     return `
       <div class="flat-file-row">
+        <span class="fr-ico ${status}">${STATUS_GLYPH[status] || '\u2022'}</span>
+        <span class="fr-main"><span class="fr-name">${escapeHtml(name)}</span>${dir ? `<span class="fr-dir">${escapeHtml(dir)}</span>` : ''}</span>
         <span class="status-badge ${status}">${badgeLabel(status)}</span>
-        <span class="file-path">${escapeHtml(path)}</span>
       </div>`;
   }
 
-  function renderSuccessView({ message, sha, files, githubUrl }) {
+  function burst(container) {
+    if (!container || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const colors = ['#5b7cff', '#8b5cf6', '#3ecf8e', '#e2b93b', '#f56565'];
+    container.innerHTML = Array.from({ length: 26 }, (_, i) => {
+      const x = (Math.random() * 100).toFixed(1);
+      const d = (Math.random() * .5).toFixed(2);
+      const t = (1.6 + Math.random() * 1.2).toFixed(2);
+      const r = Math.round(Math.random() * 360);
+      return `<i style="left:${x}%;background:${colors[i % 5]};animation-delay:${d}s;animation-duration:${t}s;--r:${r}deg"></i>`;
+    }).join('');
+    setTimeout(() => { container.innerHTML = ''; }, 3500);
+  }
+
+  function renderSuccessView({ message, sha, files, githubUrl, repoName, branch }) {
     const firstLine = (message || '').split('\n')[0];
     document.getElementById('success-message').textContent = firstLine || '(no message)';
     document.getElementById('success-file-count').textContent = `${files.length} file${files.length === 1 ? '' : 's'} changed`;
     document.getElementById('success-sha').textContent = sha.slice(0, 7);
     document.getElementById('view-on-github-btn').href = githubUrl;
+    const repoChip = document.getElementById('success-repo-chip');
+    if (repoChip) repoChip.textContent = repoName || '';
+    repoChip && repoChip.classList.toggle('hidden', !repoName);
+    const br = document.getElementById('success-branch'); if (br) br.textContent = branch || '';
+    const shaBtn = document.getElementById('success-sha-btn');
+    if (shaBtn) shaBtn.onclick = () => {
+      if (navigator.clipboard) navigator.clipboard.writeText(sha).then(() => toast('Commit hash copied')).catch(() => {});
+    };
+
+    const count = (st) => files.filter(f => f.status === st).length;
+    document.getElementById('success-added').textContent = count('added');
+    document.getElementById('success-modified').textContent = count('modified');
+    document.getElementById('success-deleted').textContent = count('deleted');
 
     const list = document.getElementById('success-files-list');
     list.innerHTML = files.length
@@ -359,11 +470,17 @@ const UI = (() => {
       list.innerHTML += `<div class="hint" style="padding:8px 0 0">+ ${files.length - 200} more files</div>`;
     }
 
+    // Replay the check animation on every push.
+    const badge = document.querySelector('.success-hero-badge');
+    if (badge) { badge.style.animation = 'none'; void badge.offsetWidth; badge.style.animation = ''; }
+    burst(document.getElementById('success-confetti'));
+    window.scrollTo({ top: 0 });
+
     // Reset the verification row back to its "checking" state for this push.
     const icon = document.getElementById('success-verify-icon');
     icon.className = 'sync-status-icon pending';
     icon.innerHTML = '<span class="spinner"></span>';
-    document.getElementById('success-verify-title').textContent = 'Confirming on GitHub…';
+    document.getElementById('success-verify-title').textContent = 'Confirming on GitHub\u2026';
     document.getElementById('success-verify-sub').textContent =
       'GitHub can take a few seconds to reflect a brand-new push. Open Live GitHub Commit any time to check the exact live state.';
   }
@@ -509,7 +626,7 @@ const UI = (() => {
     renderCommitHistoryLoading, renderCommitHistory,
     renderSummaryCounts, renderDeletionsWarning, renderFileList,
     openDiffModal, closeDiffModal, renderDiffOps, escapeHtml,
-    initSyncResultsList, setSyncResultStatus, renderSyncSummary,
+    initSyncResultsList, setSyncResultStatus, renderSyncSummary, setSyncProgress,
     renderSuccessView, updateSuccessVerify,
     renderLiveCommitLoading, renderLiveCommitError, renderLiveCommit
   };

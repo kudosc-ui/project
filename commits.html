@@ -170,6 +170,7 @@
 
 <div id="toast" class="toast hidden"></div>
 
+<script src="js/offline.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/github.js"></script>
 <script src="js/applog.js"></script>
@@ -177,30 +178,5 @@
 <script src="js/picker.js"></script>
 <script src="js/commits.js"></script>
 <script src="js/theme.js"></script>
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function () {
-    navigator.serviceWorker.register('service-worker.js').then(function (reg) {
-      if (reg.waiting) reg.waiting.postMessage('skipWaiting');
-      reg.addEventListener('updatefound', function () {
-        var fresh = reg.installing;
-        if (!fresh) return;
-        fresh.addEventListener('statechange', function () {
-          if (fresh.state === 'installed' && navigator.serviceWorker.controller) {
-            fresh.postMessage('skipWaiting');
-          }
-        });
-      });
-    }).catch(function () { /* ignore */ });
-
-    var reloaded = false;
-    navigator.serviceWorker.addEventListener('controllerchange', function () {
-      if (reloaded) return;
-      reloaded = true;
-      window.location.reload();
-    });
-  });
-}
-</script>
 </body>
 </html>

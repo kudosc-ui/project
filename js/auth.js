@@ -121,6 +121,7 @@ const Auth = (() => {
     } catch (networkErr) {
       const err = new Error('Could not reach GitHub. Check your internet connection.');
       err.kind = 'network';
+      try { window.dispatchEvent(new Event('gitsync:network-error')); } catch (_) { /* ignore */ }
       throw err;
     }
 
