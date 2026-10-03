@@ -212,8 +212,11 @@ styling, and JavaScript modules:
 - **`custom.html`** — Custom: repository creation, GitHub Pages hosting, and
   the file browser/editor.
 
-The navbar (top of both pages) links between them and hosts the Accounts
-gear icon. Because they're real pages rather than a single-page app,
+The navbar (top of every page) links between them and hosts the Settings
+gear icon and the **profile icon** (your GitHub avatar), which opens the
+Profile page (`profile.html`): followers/following, bio and details, profile
+README, pinned repositories, contribution graph, organizations, plus tabs for
+Repositories, Stars, Followers and Following. Because they're real pages rather than a single-page app,
 navigating between Home and Custom is a normal page load — your GitHub
 login carries over automatically (it's read from `localStorage`), but
 in-progress state like an unfinished upload or diff does not; finish a sync
@@ -229,7 +232,10 @@ Alongside the Home dashboard (folder/ZIP sync into an existing repo), a
 repository-level management:
 
 - **Create New Repository** — give it a name, choose **Public** or
-  **Private**, and optionally attach a ZIP file. If you attach one, GitSync
+  **Private**, and optionally add a **description** (0–300 characters), a
+  **README**, a **.gitignore** template, and a **license** (the dropdowns list
+  every template/license GitHub offers). All of these are optional. You can
+  also optionally attach a ZIP file. If you attach one, GitSync
   extracts it in the browser and pushes it as the repository's first commit
   (same one-commit approach as the Home page's sync). Leave the ZIP off to
   create an empty repository you can sync into later from Home.
@@ -262,6 +268,7 @@ repository-level management:
 ```
 index.html         # Home page
 custom.html        # Custom page
+profile.html       # Profile page
 style.css
 manifest.json       # PWA manifest (name, icons, theme colors)
 service-worker.js   # Offline app-shell caching
@@ -277,7 +284,9 @@ js/
   zip.js       # client-side ZIP extraction (uses JSZip)
   ui.js        # DOM rendering helpers, shared confirm() modal
   custom.js    # Custom page: repo creation, Pages hosting, file browser/editor
-  theme.js     # Light/dark theme toggle + persistence
+  profile.js   # Profile page (GitHub-style profile mirror)
+  navprofile.js # Fills the navbar profile icon with your avatar
+  theme.js     # Light/dark theme + persistence
 README.md
 ```
 
@@ -285,7 +294,7 @@ README.md
 
 GitSync ships with both a dark and a light theme. It follows your system
 preference the first time you open it, and you can switch anytime with the
-sun/moon button in the navbar (or the toggle on the Settings page) — your
+Appearance toggle on the Settings page — your
 choice is remembered for next time via `localStorage`.
 
 ## 13. Installing as an app (PWA)

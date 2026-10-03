@@ -136,6 +136,11 @@
     document.getElementById('app-shell').classList.remove('hidden');
     document.getElementById('username-label').textContent = user.login;
     UI.showView('view-dashboard');
+    if (location.hash === '#settings') { // arrived from the gear icon on another page
+      history.replaceState(null, '', location.pathname + location.search);
+      populateSettings();
+      UI.showView('view-settings');
+    }
 
     const repoSelect = document.getElementById('repo-select');
     const repoTrigger = document.getElementById('repo-select-trigger');

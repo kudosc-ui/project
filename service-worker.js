@@ -23,7 +23,7 @@
 
    IMPORTANT: bump CACHE_VERSION whenever the app shell changes. */
 
-const CACHE_VERSION = 'gitsync-v10';
+const CACHE_VERSION = 'gitsync-v11';
 const NAV_TIMEOUT_MS = 6000;
 const ASSET_TIMEOUT_MS = 10000;
 const OFFLINE_URL = './offline.html';
@@ -32,6 +32,7 @@ const APP_SHELL = [
   './index.html',
   './custom.html',
   './commits.html',
+  './profile.html',
   './setup.html',
   './offline.html',
   './style.css',
@@ -52,6 +53,8 @@ const APP_SHELL = [
   './js/custom.js',
   './js/commits.js',
   './js/theme.js',
+  './js/profile.js',
+  './js/navprofile.js',
   './icons/icon-48.png',
   './icons/icon-72.png',
   './icons/icon-96.png',

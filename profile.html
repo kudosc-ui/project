@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<!--
+  GitSync — © 2026 CodeZing (https://youtube.com/@kudosc?si=au2Bagg75VuP_jEr)
+  All rights reserved. Source available for viewing only via the official
+  GitHub repository. No copying, re-hosting, modification-and-redistribution,
+  or resale without written permission. See LICENSE for full terms.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>GitSync — Profile</title>
+<meta name="description" content="Your GitHub profile inside GitSync.">
+
+<!-- Theme applied before first paint to avoid a flash of the wrong theme -->
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('gitsync-theme');
+    if(!t){ t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+    document.documentElement.setAttribute('data-theme', t);
+  }catch(e){}
+})();
+</script>
+
+<link rel="stylesheet" href="style.css">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#5b7cff" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#4f6bf0" media="(prefers-color-scheme: light)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GitSync">
+<link rel="icon" href="icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+</head>
+<body>
+
+<div id="app-shell">
+
+  <header class="navbar">
+    <nav class="navbar-links">
+      <a href="index.html" class="navbar-link">Home</a>
+      <a href="commits.html" class="navbar-link">Commits</a>
+      <a href="custom.html" class="navbar-link">Custom</a>
+    </nav>
+    <div class="navbar-actions">
+      <a href="index.html#settings" class="icon-btn" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="19" height="19"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </a>
+      <a id="profile-btn" href="profile.html" class="icon-btn profile-btn active" title="Profile" aria-label="Profile">
+        <img class="profile-btn-img hidden" alt="">
+        <svg class="profile-btn-fallback" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      </a>
+    </div>
+  </header>
+
+  <div id="profile-not-connected" class="hidden">
+    <div class="content custom-content">
+      <div class="card center-card">
+        <div class="conflict-icon">🔒</div>
+        <div class="success-title">Connect a GitHub account first</div>
+        <p class="hint">Head to the Home page to connect with a Personal Access Token, then come back here.</p>
+        <a href="index.html" class="btn btn-primary btn-block">Go to Home</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="profile-connected" class="hidden">
+    <div class="content custom-content">
+
+      <!-- ============ HEADER ============ -->
+      <div class="pf-head">
+        <img id="pf-avatar" class="pf-avatar" alt="">
+        <div>
+          <div class="pf-name" id="pf-name">Loading…</div>
+          <div class="pf-login" id="pf-login"></div>
+          <span class="pf-pill hidden" id="pf-pill"></span>
+        </div>
+      </div>
+      <p class="pf-bio hidden selectable" id="pf-bio"></p>
+
+      <div class="pf-follow">
+        <button type="button" data-goto="followers"><svg width="15" height="15" style="vertical-align:-2px;margin-right:4px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><b id="pf-followers">–</b> followers</button>
+        <button type="button" data-goto="following"><b id="pf-following">–</b> following</button>
+      </div>
+
+      <ul class="pf-meta selectable" id="pf-meta"></ul>
+
+      <div class="pf-actions">
+        <a class="btn btn-secondary" id="pf-open-gh" href="https://github.com" target="_blank" rel="noopener">Open on GitHub ↗</a>
+        <a class="btn btn-secondary" id="pf-edit-gh" href="https://github.com/settings/profile" target="_blank" rel="noopener">Edit profile ↗</a>
+      </div>
+
+      <div class="pf-stats">
+        <div class="pf-stat"><b id="pf-s-repos">–</b><span>Repos</span></div>
+        <div class="pf-stat"><b id="pf-s-stars">–</b><span>Starred</span></div>
+        <div class="pf-stat"><b id="pf-s-gists">–</b><span>Gists</span></div>
+        <div class="pf-stat"><b id="pf-s-orgs">–</b><span>Orgs</span></div>
+      </div>
+
+      <!-- ============ TABS ============ -->
+      <div class="pf-tabs" id="pf-tabs">
+        <button class="pf-tab active" data-tab="overview">Overview</button>
+        <button class="pf-tab" data-tab="repos">Repositories<span class="n" id="pf-n-repos">–</span></button>
+        <button class="pf-tab" data-tab="stars">Stars<span class="n" id="pf-n-stars">–</span></button>
+        <button class="pf-tab" data-tab="followers">Followers<span class="n" id="pf-n-followers">–</span></button>
+        <button class="pf-tab" data-tab="following">Following<span class="n" id="pf-n-following">–</span></button>
+      </div>
+
+      <div class="pf-pane active" id="pane-overview">
+        <div id="pf-readme-wrap" class="hidden">
+          <div class="pf-h" id="pf-readme-title">README</div>
+          <div class="pf-readme selectable" id="pf-readme"></div>
+        </div>
+
+        <div class="pf-h" id="pf-pinned-title">Pinned</div>
+        <div class="pf-grid" id="pf-pinned"><div class="pf-skel">Loading…</div></div>
+
+        <div class="pf-h" id="pf-contrib-title">Contributions</div>
+        <div class="pf-graph-wrap"><div class="pf-graph" id="pf-graph"></div></div>
+        <div class="pf-graph-note" id="pf-graph-note">Loading contributions…</div>
+
+        <div id="pf-orgs-wrap" class="hidden">
+          <div class="pf-h">Organizations</div>
+          <div class="pf-orgs" id="pf-orgs"></div>
+        </div>
+      </div>
+
+      <div class="pf-pane" id="pane-repos">
+        <input type="text" id="pf-repo-search" placeholder="Find a repository…" autocomplete="off" style="margin-bottom:12px">
+        <div class="pf-grid" id="pf-repos"></div>
+      </div>
+
+      <div class="pf-pane" id="pane-stars">
+        <div class="pf-grid" id="pf-stars"></div>
+        <button class="btn btn-secondary btn-block pf-more hidden" id="pf-stars-more">Load more</button>
+      </div>
+
+      <div class="pf-pane" id="pane-followers">
+        <div class="pf-list" id="pf-followers-list"></div>
+        <button class="btn btn-secondary btn-block pf-more hidden" id="pf-followers-more">Load more</button>
+      </div>
+
+      <div class="pf-pane" id="pane-following">
+        <div class="pf-list" id="pf-following-list"></div>
+        <button class="btn btn-secondary btn-block pf-more hidden" id="pf-following-more">Load more</button>
+      </div>
+
+    </div>
+  </div><!-- /profile-connected -->
+
+  <footer class="app-footer">
+    GitSync © 2026 <strong>CodeZing</strong> ·
+    <a href="https://youtube.com/@kudosc?si=au2Bagg75VuP_jEr" target="_blank" rel="noopener">youtube.com/@kudosc</a>
+    · All rights reserved. Not for redistribution or resale.
+  </footer>
+
+</div><!-- /app-shell -->
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/offline.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/github.js"></script>
+<script src="js/applog.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/navprofile.js"></script>
+<script src="js/theme.js"></script>
+</body>
+</html>

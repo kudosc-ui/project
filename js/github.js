@@ -169,23 +169,38 @@ const GitHub = (() => {
 
   // ---- Repository creation & metadata ----
 
-  function createRepo(name, isPrivate, description) {
+  /**
+   * opts: { autoInit, gitignore, license }
+   *  - gitignore: a template name from listGitignoreTemplates() (e.g. "Node")
+   *  - license:   a license key from listLicenses() (e.g. "mit")
+   * GitHub only applies gitignore/license templates when auto_init is true.
+   */
+  function createRepo(name, isPrivate, description, opts = {}) {
     // auto_init: true makes GitHub create the initial commit + branch ref
     // as part of repo creation itself, atomically. That removes the race
     // window where the repo record exists but its Git internals (blobs,
     // trees, refs) aren't ready yet — the source of the old "repository is
     // empty / reference could not be resolved" failures on a fresh repo.
-    // Any placeholder file GitHub adds is simply diffed away (or overwritten)
-    // by the first real push, same as any other file changed since baseline.
-    return request('/user/repos', {
-      method: 'POST',
-      body: JSON.stringify({
-        name,
-        private: !!isPrivate,
-        description: description || '',
-        auto_init: true
-      })
-    });
+    const autoInit = opts.autoInit !== false;
+    const payload = {
+      name,
+      private: !!isPrivate,
+      description: description || '',
+      auto_init: autoInit
+    };
+    if (autoInit && opts.gitignore) payload.gitignore_template = opts.gitignore;
+    if (autoInit && opts.license) payload.license_template = opts.license;
+    return request('/user/repos', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  /** Every license GitHub offers (name + key), for the "Add license" dropdown. */
+  function listLicenses() {
+    return request('/licenses?per_page=100');
+  }
+
+  /** Every .gitignore template GitHub offers (array of names). */
+  function listGitignoreTemplates() {
+    return request('/gitignore/templates');
   }
 
   function getRepo(owner, repo) {
@@ -240,11 +255,48 @@ const GitHub = (() => {
     return request(`/repos/${owner}/${repo}/pages`);
   }
 
+  // ---- Profile ----
+
+  function getUser() { return request('/user'); }
+  function listOrgs() { return request('/user/orgs?per_page=50'); }
+  function listFollowers(page = 1) { return request(`/user/followers?per_page=30&page=${page}`); }
+  function listFollowing(page = 1) { return request(`/user/following?per_page=30&page=${page}`); }
+  function listStarred(page = 1) { return request(`/user/starred?per_page=30&page=${page}`); }
+
+  /** Total starred repos: ask for 1 per page and read the last page number from the Link header. */
+  async function starredCount() {
+    const res = await fetch(`${BASE}/user/starred?per_page=1`, { headers: headers() });
+    if (!res.ok) throw new Error('Could not load stars.');
+    const link = res.headers.get('link') || '';
+    const m = link.match(/[?&]page=(\d+)>;\s*rel="last"/);
+    if (m) return parseInt(m[1], 10);
+    const arr = await res.json().catch(() => []);
+    return Array.isArray(arr) ? arr.length : 0;
+  }
+
+  /** GraphQL: pinned repositories + the contribution calendar (neither exists in the REST API). */
+  function graphql(query) {
+    return request('/graphql', { method: 'POST', body: JSON.stringify({ query }) });
+  }
+
+  /** The profile README (repo named after the user), as GitHub-rendered HTML, or null if there isn't one. */
+  async function getProfileReadmeHtml(login) {
+    let res;
+    try {
+      res = await fetch(`${BASE}/repos/${encodeURIComponent(login)}/${encodeURIComponent(login)}/readme`, {
+        headers: { ...headers(), 'Accept': 'application/vnd.github.html+json' }
+      });
+    } catch (e) { return null; }
+    if (!res.ok) return null;
+    return res.text();
+  }
+
   return {
     listRepos, listBranches, getBranch, getRef, getCommit, getTree,
     createBlob, createTree, createCommit, updateRef, getLatestCommitForBranch,
     listCommits, getCommitDetail,
-    createRepo, getRepo, deleteRepo, createRef,
+    createRepo, listLicenses, listGitignoreTemplates, getRepo, deleteRepo, createRef,
+    getUser, listOrgs, listFollowers, listFollowing, listStarred, starredCount, graphql, getProfileReadmeHtml,
     getContents, putContents, deleteFileContents,
     enablePages, getPages
   };

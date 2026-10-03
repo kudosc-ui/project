@@ -72,6 +72,7 @@
     const account = Auth.getActiveAccount();
     document.getElementById('custom-username-label').textContent = account ? account.login : '…';
     loadRepoList();
+    loadRepoOptions();
   }
 
   // ---------------- Repository list ----------------
@@ -275,6 +276,11 @@
     const isPrivate = document.querySelector('input[name="new-repo-visibility"]:checked').value === 'private';
     const zipInput = document.getElementById('new-repo-zip-input');
     const zipFile = zipInput.files && zipInput.files[0];
+    const description = (document.getElementById('new-repo-desc').value || '').trim().slice(0, 300);
+    const wantReadme = document.getElementById('new-repo-readme').checked;
+    const gitignore = document.getElementById('new-repo-gitignore').value;
+    const license = document.getElementById('new-repo-license').value;
+    const keep = { readme: wantReadme, gitignore: !!gitignore, license: !!license };
     const errEl = document.getElementById('create-repo-error');
     const retryBtn = document.getElementById('create-repo-retry-btn');
     const btn = document.getElementById('create-repo-btn');
@@ -327,27 +333,34 @@
       }
 
       setCreateProgress(32, 'Creating repository…', '');
-      const repo = await GitHub.createRepo(name, isPrivate);
+      // GitHub only applies README/.gitignore/license (and creates the first
+      // commit) when auto_init is on. If nothing at all is requested, make a
+      // truly empty repo — exactly what GitHub does with every box unticked.
+      const needsInit = !!(zipFile || wantReadme || gitignore || license);
+      const repo = await GitHub.createRepo(name, isPrivate, description, { autoInit: needsInit, gitignore, license });
       const owner = repo.owner.login;
       const branch = repo.default_branch || 'main';
 
       if (fileMap && fileMap.size) {
         try {
-          await pushInitialFiles({ repo, owner, branch, fileMap });
+          await pushInitialFiles({ repo, owner, branch, fileMap, keep });
         } catch (pushErr) {
           // The repository itself was created successfully — only the
           // upload failed. Keep everything needed to retry just the push,
           // instead of forcing the person to delete the (now-empty) repo
           // and start the whole thing over.
-          pendingRepoPush = { repo, owner, branch, fileMap, skipped, tooLarge };
+          pendingRepoPush = { repo, owner, branch, fileMap, skipped, tooLarge, keep };
           throw pushErr;
         }
+      } else if (needsInit && !wantReadme) {
+        await removeAutoReadme(owner, repo.name, branch);
       }
 
       setCreateProgress(100, 'Done', '');
       progressCard.classList.add('hidden');
       showCreateSuccess(repo, owner, branch, isPrivate, skipped, tooLarge, fileMap ? fileMap.size : 0);
       nameInput.value = '';
+      resetCreateOptions();
       zipInput.value = ''; zipInput.dispatchEvent(new Event('change'));
       state.repos = []; // force a refresh next time the list is viewed
       loadRepoList();
@@ -375,7 +388,7 @@
    * with no ref to race against, so there's nothing special about this push;
    * treating it as an ordinary update is what makes it reliable.
    */
-  async function pushInitialFiles({ repo, owner, branch, fileMap }) {
+  async function pushInitialFiles({ repo, owner, branch, fileMap, keep }) {
     // Give the branch ref a moment to become visible — see waitForRepoReady().
     setCreateProgress(38, 'Preparing repository…', '');
     await waitForRepoReady(owner, repo.name, branch);
@@ -398,6 +411,18 @@
     const remoteMap = Compare.buildRemoteFileMap(baseline.fullTree);
     const diff = Compare.computeDiff(fileMap, localHashes, remoteMap, 'repo', '');
 
+    // Anything the person explicitly asked GitHub to generate (README,
+    // .gitignore, license) must survive the full-repo sync even though it
+    // isn't in their ZIP. A file with the same name inside the ZIP still wins.
+    if (keep) {
+      const isKept = (p) => !p.includes('/') && (
+        (keep.readme && /^readme(\.md)?$/i.test(p)) ||
+        (keep.gitignore && p === '.gitignore') ||
+        (keep.license && /^(license|licence|copying)(\.(md|txt))?$/i.test(p))
+      );
+      diff.deleted = diff.deleted.filter(d => !isKept(d.path));
+    }
+
     await Commit.pushCommit({
       owner, repo: repo.name, branch,
       baseCommitSha: baseline.baseCommitSha, baseTreeSha: baseline.baseTreeSha,
@@ -413,7 +438,7 @@
     const retryBtn = document.getElementById('create-repo-retry-btn');
     const btn = document.getElementById('create-repo-btn');
     const progressCard = document.getElementById('create-repo-progress-card');
-    const { repo, owner, branch, fileMap, skipped, tooLarge } = pendingRepoPush;
+    const { repo, owner, branch, fileMap, skipped, tooLarge, keep } = pendingRepoPush;
 
     errEl.classList.add('hidden');
     retryBtn.disabled = true;
@@ -423,13 +448,14 @@
     setCreateProgress(35, 'Retrying upload…', '');
 
     try {
-      await pushInitialFiles({ repo, owner, branch, fileMap });
+      await pushInitialFiles({ repo, owner, branch, fileMap, keep });
       setCreateProgress(100, 'Done', '');
       progressCard.classList.add('hidden');
       retryBtn.classList.add('hidden');
       pendingRepoPush = null;
       showCreateSuccess(repo, owner, branch, repo.private, skipped, tooLarge, fileMap ? fileMap.size : 0);
       document.getElementById('new-repo-name').value = '';
+      resetCreateOptions();
       document.getElementById('new-repo-zip-input').value = ''; document.getElementById('new-repo-zip-input').dispatchEvent(new Event('change'));
       state.repos = [];
       loadRepoList();
@@ -443,6 +469,83 @@
       retryBtn.disabled = false;
       btn.disabled = false;
     }
+  }
+
+  /** GitHub always adds a README when auto_init is on; remove it again if the person didn't tick "Add a README". */
+  async function removeAutoReadme(owner, name, branch) {
+    setCreateProgress(75, 'Finishing up…', '');
+    try {
+      await waitForRepoReady(owner, name, branch);
+      const f = await GitHub.getContents(owner, name, 'README.md', branch);
+      await GitHub.deleteFileContents(owner, name, 'README.md', 'Remove auto-generated README', f.sha, branch);
+    } catch (e) {
+      UI.toast('Repository created, but the README GitHub adds automatically could not be removed.');
+    }
+  }
+
+  function resetCreateOptions() {
+    document.getElementById('new-repo-desc').value = '';
+    document.getElementById('new-repo-desc-count').textContent = '0';
+    document.getElementById('new-repo-readme').checked = false;
+    document.getElementById('new-repo-gitignore').value = '';
+    document.getElementById('new-repo-license').value = '';
+  }
+
+  // ---- "Add .gitignore" / "Add license" dropdowns: every option GitHub offers ----
+  const OPT_CACHE_KEY = 'gitsync-repo-options';
+  let repoOptionsLoaded = false;
+
+  function fillSelect(id, items, blankLabel) {
+    const sel = document.getElementById(id);
+    const current = sel.value;
+    sel.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = ''; blank.textContent = blankLabel;
+    sel.appendChild(blank);
+    for (const it of items) {
+      const o = document.createElement('option');
+      o.value = it.value; o.textContent = it.label;
+      sel.appendChild(o);
+    }
+    sel.value = current;
+  }
+
+  function applyRepoOptions(data) {
+    fillSelect('new-repo-gitignore', (data.gitignore || []).map(n => ({ value: n, label: n })), 'No .gitignore');
+    fillSelect('new-repo-license', (data.licenses || []).map(l => ({ value: l.key, label: l.name })), 'No license');
+  }
+
+  async function loadRepoOptions() {
+    const hint = document.getElementById('new-repo-options-hint');
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(OPT_CACHE_KEY) || 'null'); } catch (e) { /* ignore */ }
+    if (cached) applyRepoOptions(cached);
+    try {
+      const [tpls, lics] = await Promise.all([GitHub.listGitignoreTemplates(), GitHub.listLicenses()]);
+      const data = {
+        gitignore: (tpls || []).slice().sort((a, b) => a.localeCompare(b)),
+        licenses: (lics || []).map(l => ({ key: l.key, name: l.name })).sort((a, b) => a.name.localeCompare(b.name))
+      };
+      applyRepoOptions(data);
+      try { localStorage.setItem(OPT_CACHE_KEY, JSON.stringify(data)); } catch (e) { /* ignore */ }
+      repoOptionsLoaded = true;
+      hint.classList.add('hidden');
+    } catch (e) {
+      if (!cached) {
+        hint.textContent = 'Couldn\'t load the .gitignore and license lists from GitHub. Tap a dropdown to try again.';
+        hint.classList.remove('hidden');
+      }
+    }
+  }
+
+  function initCreateOptions() {
+    const desc = document.getElementById('new-repo-desc');
+    desc.addEventListener('input', () => {
+      document.getElementById('new-repo-desc-count').textContent = String(desc.value.length);
+    });
+    ['new-repo-gitignore', 'new-repo-license'].forEach(id => {
+      document.getElementById(id).addEventListener('focus', () => { if (!repoOptionsLoaded) loadRepoOptions(); });
+    });
   }
 
   function setCreateProgress(pct, label, detail) {
@@ -816,6 +919,7 @@
     boot();
     initDropzone();
 
+    initCreateOptions();
     document.getElementById('create-repo-btn').addEventListener('click', handleCreateRepo);
     document.getElementById('create-repo-retry-btn').addEventListener('click', handleRetryRepoUpload);
     document.getElementById('custom-repo-search').addEventListener('input', renderRepoList);
