@@ -118,7 +118,7 @@
           <span class="visibility-badge ${repo.private ? 'private' : 'public'}">${repo.private ? 'PRIVATE' : 'PUBLIC'}</span>
         </div>
         <div class="repo-row-actions">
-          <button class="btn-link small" data-action="browse">Browse Files</button>
+          <button class="btn-link small" data-action="browse">Manage Files</button>
           <a class="btn-link small" href="${repo.html_url}" target="_blank" rel="noopener">Open on GitHub ↗</a>
           ${!repo.private && !published ? '<button class="btn-link small" data-action="publish">Publish ↗</button>' : ''}
         </div>
@@ -630,7 +630,7 @@
     document.getElementById('repo-browser-title').textContent = fullName;
     card.classList.remove('hidden');
     list.innerHTML = '<div class="hint" style="padding:10px 0">Loading files…</div>';
-    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    enterManage();
 
     try {
       const repoInfo = await GitHub.getRepo(owner, repo);
@@ -646,6 +646,7 @@
       }
       state.browsing = { owner, repoName: repo, branch, treeMap, sort: 'size', search: '' };
       const _s = document.getElementById('repo-file-search'); if (_s) _s.value = '';
+      document.getElementById('rename-repo-input').value = repo;
       document.querySelectorAll('#repo-file-sort .chip').forEach(c => c.classList.toggle('active', c.dataset.sort === 'size'));
       renderRepoFileList();
     } catch (e) {
@@ -654,6 +655,58 @@
     }
 
     document.getElementById('delete-repo-btn').onclick = () => openDeleteRepoModal(owner, repo);
+  }
+
+  // ---------------- Manage-files page (full page with Back button) ----------------
+
+  function enterManage() {
+    if (!document.body.classList.contains('manage-mode')) history.pushState({ manage: 1 }, '');
+    document.body.classList.add('manage-mode');
+    window.scrollTo(0, 0);
+  }
+  function closeManage() {
+    document.getElementById('repo-browser-card').classList.add('hidden');
+    document.body.classList.remove('manage-mode');
+    state.browsing = null;
+  }
+  function leaveManage() {
+    if (history.state && history.state.manage) history.back(); else closeManage();
+  }
+  window.addEventListener('popstate', () => {
+    if (document.body.classList.contains('manage-mode')) closeManage();
+  });
+
+  async function handleRenameRepo() {
+    const b = state.browsing;
+    if (!b) return;
+    const input = document.getElementById('rename-repo-input');
+    const btn = document.getElementById('rename-repo-btn');
+    const newName = input.value.trim();
+    if (!newName || newName === b.repoName) { UI.toast('Enter a new name first.'); return; }
+    if (!/^[A-Za-z0-9._-]+$/.test(newName) || newName === '.' || newName === '..') {
+      UI.toast('Use only letters, numbers, dashes, dots and underscores.'); return;
+    }
+    const ok = await UI.confirm(
+      `Rename "${b.repoName}" to "${newName}"? GitHub will redirect the old address, but GitHub Pages links and anything using the old name will need updating.`,
+      'Rename repository');
+    if (!ok) return;
+    btn.disabled = true; btn.textContent = 'Renaming…';
+    try {
+      const oldFull = `${b.owner}/${b.repoName}`;
+      const updated = await GitHub.renameRepo(b.owner, b.repoName, newName);
+      const cache = pcGet(); delete cache[oldFull]; localStorage.setItem(PC_KEY, JSON.stringify(cache));
+      b.repoName = updated.name;
+      state.repos = [];
+      document.getElementById('repo-browser-title').textContent = updated.full_name;
+      input.value = updated.name;
+      document.getElementById('delete-repo-btn').onclick = () => openDeleteRepoModal(b.owner, updated.name);
+      loadRepoList();
+      UI.toast('Repository renamed.');
+    } catch (e) {
+      UI.toast(friendlyError(e));
+    } finally {
+      btn.disabled = false; btn.textContent = 'Rename Repository';
+    }
   }
 
   const FB_TYPES = {
@@ -874,7 +927,7 @@
       try {
         await GitHub.deleteRepo(owner, repoName);
         modal.classList.add('hidden');
-        document.getElementById('repo-browser-card').classList.add('hidden');
+        leaveManage();
         state.browsing = null;
         state.repos = [];
         loadRepoList();
@@ -923,10 +976,8 @@
     document.getElementById('create-repo-btn').addEventListener('click', handleCreateRepo);
     document.getElementById('create-repo-retry-btn').addEventListener('click', handleRetryRepoUpload);
     document.getElementById('custom-repo-search').addEventListener('input', renderRepoList);
-    document.getElementById('repo-browser-close').addEventListener('click', () => {
-      document.getElementById('repo-browser-card').classList.add('hidden');
-      state.browsing = null;
-    });
+    document.getElementById('repo-browser-close').addEventListener('click', leaveManage);
+    document.getElementById('rename-repo-btn').addEventListener('click', handleRenameRepo);
 
     document.getElementById('file-editor-close').addEventListener('click', () => {
       document.getElementById('file-editor-modal').classList.add('hidden');

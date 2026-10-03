@@ -207,6 +207,11 @@ const GitHub = (() => {
     return request(`/repos/${owner}/${repo}`);
   }
 
+  /** Renames a repository (PATCH name). GitHub keeps redirecting the old URL. */
+  function renameRepo(owner, repo, newName) {
+    return request(`/repos/${owner}/${repo}`, { method: 'PATCH', body: JSON.stringify({ name: newName }) });
+  }
+
   function deleteRepo(owner, repo) {
     return request(`/repos/${owner}/${repo}`, { method: 'DELETE' });
   }
@@ -258,6 +263,8 @@ const GitHub = (() => {
   // ---- Profile ----
 
   function getUser() { return request('/user'); }
+  /** Updates the signed-in user's profile. Only the fields passed are changed. */
+  function updateUser(fields) { return request('/user', { method: 'PATCH', body: JSON.stringify(fields) }); }
   function listOrgs() { return request('/user/orgs?per_page=50'); }
   function listFollowers(page = 1) { return request(`/user/followers?per_page=30&page=${page}`); }
   function listFollowing(page = 1) { return request(`/user/following?per_page=30&page=${page}`); }
@@ -296,7 +303,7 @@ const GitHub = (() => {
     createBlob, createTree, createCommit, updateRef, getLatestCommitForBranch,
     listCommits, getCommitDetail,
     createRepo, listLicenses, listGitignoreTemplates, getRepo, deleteRepo, createRef,
-    getUser, listOrgs, listFollowers, listFollowing, listStarred, starredCount, graphql, getProfileReadmeHtml,
+    getUser, updateUser, renameRepo, listOrgs, listFollowers, listFollowing, listStarred, starredCount, graphql, getProfileReadmeHtml,
     getContents, putContents, deleteFileContents,
     enablePages, getPages
   };

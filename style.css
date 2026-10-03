@@ -1365,3 +1365,23 @@ html[data-theme="light"] .pf-graph i.l3{background:#30a14e;} html[data-theme="li
 .pf-skel{color:var(--text-dim); font-size:14px; padding:18px 4px;}
 .pf-readme a.anchor{display:none;}
 .pf-readme p{margin:8px 0;}
+
+
+/* ---------- Boxes: settings, edit profile, manage files ---------- */
+.box-card, #view-settings .settings-section, #view-settings .howto-link-row{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:18px; margin:0 0 14px; box-shadow:var(--shadow-sm); transition:border-color .2s, transform .15s;
+}
+#view-settings .settings-section:hover, #view-settings .howto-link-row:hover{border-color:var(--accent);}
+#view-settings .settings-divider{display:none;}
+#view-settings a.howto-link-row{text-decoration:none; color:inherit;}
+.danger-zone{border-color:rgba(220,61,61,.35);}
+.ep-who{display:flex; align-items:center; gap:14px; margin-bottom:6px;}
+/* Settings fills the screen: wider content, two columns on large screens */
+.content:has(#view-settings.active){max-width:1100px;}
+#view-settings.active{display:grid; grid-template-columns:1fr; gap:14px; align-items:start;}
+#view-settings.active > *{margin:0 !important; min-width:0;}
+#view-settings .page-header, #view-settings .settings-divider{grid-column:1 / -1;}
+@media (min-width:900px){ #view-settings.active{grid-template-columns:1fr 1fr;} }
+/* Manage-files page: hide the rest of the Custom page */
+body.manage-mode #custom-connected .custom-content > :not(#repo-browser-card){display:none !important;}

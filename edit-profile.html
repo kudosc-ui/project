@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<!--
+  GitSync — © 2026 CodeZing (https://youtube.com/@kudosc?si=au2Bagg75VuP_jEr)
+  All rights reserved. Source available for viewing only via the official
+  GitHub repository. No copying, re-hosting, modification-and-redistribution,
+  or resale without written permission. See LICENSE for full terms.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>GitSync — Edit Profile</title>
+<meta name="description" content="Edit your GitHub profile without leaving GitSync.">
+
+<!-- Theme applied before first paint to avoid a flash of the wrong theme -->
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('gitsync-theme');
+    if(!t){ t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+    document.documentElement.setAttribute('data-theme', t);
+  }catch(e){}
+})();
+</script>
+
+<link rel="stylesheet" href="style.css">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#5b7cff" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#4f6bf0" media="(prefers-color-scheme: light)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GitSync">
+<link rel="icon" href="icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+</head>
+<body>
+
+<div id="app-shell">
+
+  <header class="navbar">
+    <nav class="navbar-links">
+      <a href="index.html" class="navbar-link">Home</a>
+      <a href="commits.html" class="navbar-link">Commits</a>
+      <a href="custom.html" class="navbar-link">Custom</a>
+    </nav>
+    <div class="navbar-actions">
+      <a href="index.html#settings" class="icon-btn" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="19" height="19"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </a>
+      <a id="profile-btn" href="profile.html" class="icon-btn profile-btn active" title="Profile" aria-label="Profile">
+        <img class="profile-btn-img hidden" alt="">
+        <svg class="profile-btn-fallback" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      </a>
+    </div>
+  </header>
+
+  <div id="ep-not-connected" class="hidden">
+    <div class="content custom-content">
+      <div class="card center-card">
+        <div class="conflict-icon">🔒</div>
+        <div class="success-title">Connect a GitHub account first</div>
+        <p class="hint">Head to the Home page to connect with a Personal Access Token, then come back here.</p>
+        <a href="index.html" class="btn btn-primary btn-block">Go to Home</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="ep-connected" class="hidden">
+    <div class="content custom-content">
+      <div class="page-header">
+        <a id="ep-back" href="profile.html" class="icon-btn back-btn" aria-label="Back to profile" title="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></a>
+        <div class="page-header-title">
+          <div class="page-header-title-main">Edit Profile</div>
+          <div class="page-header-title-sub">Saved straight to your GitHub account</div>
+        </div>
+      </div>
+
+      <div class="box-card">
+        <div class="settings-section-head"><span class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span><div><div class="settings-section-title">Identity</div><div class="settings-section-sub">How your name appears on GitHub</div></div></div>
+        <div class="ep-who"><img id="ep-avatar" class="pf-avatar" alt=""><div><div class="pf-name" id="ep-title">Loading…</div><div class="pf-login" id="ep-handle"></div></div></div>
+        <label class="field-label" for="ef-name">Name</label>
+        <input type="text" id="ef-name" maxlength="255" placeholder="Your full name" autocomplete="off">
+        <label class="field-label" for="ef-login">GitHub handle</label>
+        <input type="text" id="ef-login" disabled>
+        <p class="hint">🔒 GitHub doesn't let apps change a username. You can change it <a href="https://github.com/settings/admin" target="_blank" rel="noopener">on GitHub ↗</a>.</p>
+      </div>
+
+      <div class="box-card">
+        <div class="settings-section-head"><span class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></span><div><div class="settings-section-title">About you</div><div class="settings-section-sub">Shown under your name</div></div></div>
+        <label class="field-label" for="ef-bio">Bio</label>
+        <textarea id="ef-bio" rows="3" maxlength="160" placeholder="Tell people what you build"></textarea>
+        <div class="char-count"><span id="ef-bio-count">0</span>/160</div>
+      </div>
+
+      <div class="box-card">
+        <div class="settings-section-head"><span class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></span><div><div class="settings-section-title">Contact &amp; links</div><div class="settings-section-sub">Public details on your profile</div></div></div>
+        <label class="field-label" for="ef-email">Public email</label>
+        <input type="email" id="ef-email" placeholder="you@example.com" autocomplete="off">
+        <label class="field-label" for="ef-blog">Website</label>
+        <input type="text" id="ef-blog" placeholder="https://example.com" autocomplete="off" autocapitalize="off">
+        <label class="field-label" for="ef-twitter">X / Twitter username</label>
+        <input type="text" id="ef-twitter" placeholder="username" autocomplete="off" autocapitalize="off">
+      </div>
+
+      <div class="box-card">
+        <div class="settings-section-head"><span class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg></span><div><div class="settings-section-title">Work &amp; location</div><div class="settings-section-sub">Where you are and what you do</div></div></div>
+        <label class="field-label" for="ef-company">Company</label>
+        <input type="text" id="ef-company" placeholder="Company or team" autocomplete="off">
+        <label class="field-label" for="ef-location">Location</label>
+        <input type="text" id="ef-location" placeholder="City, Country" autocomplete="off">
+        <label class="checkbox-row repo-opt-row" for="ef-hireable">
+          <input type="checkbox" id="ef-hireable">
+          <span><b>Available for hire</b><small>Shows an “Available for hire” note on your profile</small></span>
+        </label>
+      </div>
+
+      <button id="ep-save" class="btn btn-primary btn-block" disabled>Save Changes</button>
+      <p id="ep-error" class="error-text hidden"></p>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    GitSync © 2026 <strong>CodeZing</strong> ·
+    <a href="https://youtube.com/@kudosc?si=au2Bagg75VuP_jEr" target="_blank" rel="noopener">youtube.com/@kudosc</a>
+    · All rights reserved. Not for redistribution or resale.
+  </footer>
+
+</div><!-- /app-shell -->
+
+<div id="toast" class="toast hidden"></div>
+
+<div id="confirm-modal" class="modal hidden">
+  <div class="modal-sheet small-sheet">
+    <div class="modal-header"><span id="confirm-modal-title">Are you sure?</span></div>
+    <div class="modal-body" style="padding:0 16px 16px"><p id="confirm-modal-message"></p></div>
+    <div class="modal-actions">
+      <button id="confirm-modal-cancel" class="btn btn-secondary">Cancel</button>
+      <button id="confirm-modal-ok" class="btn btn-danger">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/offline.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/github.js"></script>
+<script src="js/applog.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/edit-profile.js"></script>
+<script src="js/navprofile.js"></script>
+<script src="js/theme.js"></script>
+</body>
+</html>
