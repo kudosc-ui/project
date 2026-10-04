@@ -1385,3 +1385,90 @@ html[data-theme="light"] .pf-graph i.l3{background:#30a14e;} html[data-theme="li
 @media (min-width:900px){ #view-settings.active{grid-template-columns:1fr 1fr;} }
 /* Manage-files page: hide the rest of the Custom page */
 body.manage-mode #custom-connected .custom-content > :not(#repo-browser-card){display:none !important;}
+
+/* =====================================================================
+   Boxless, full-screen layouts (Edit profile · Profile stats · Manage files)
+   One continuous surface with hairline dividers instead of separate cards.
+   ===================================================================== */
+
+/* --- Shared: .box-card no longer draws a card (Settings keeps its own boxes) --- */
+.box-card{
+  background:none; border:none; border-radius:0; box-shadow:none;
+  padding:20px 0; margin:0; border-bottom:1px solid var(--border);
+}
+.box-card:last-of-type{border-bottom:none;}
+.box-card .settings-section-head{margin-bottom:14px;}
+.box-card .settings-icon{width:auto; height:auto; background:none; border-radius:0; color:var(--accent);}
+.box-card .settings-icon svg{width:20px; height:20px;}
+.box-card .settings-section-title{font-size:16px;}
+.box-card.danger-zone{border-bottom:none; border-top:1px solid rgba(220,61,61,.35);}
+.box-card.danger-zone .settings-icon{color:var(--red);}
+
+/* --- Edit profile: full-screen form --- */
+body.ep-page .custom-content{max-width:none; padding:12px 18px 40px;}
+@media (min-width:860px){ body.ep-page .custom-content{padding:24px 40px 48px;} }
+body.ep-page .page-header{margin-bottom:6px; padding-bottom:14px; border-bottom:1px solid var(--border);}
+body.ep-page .ep-who{padding-bottom:4px;}
+body.ep-page .pf-avatar{width:72px; height:72px;}
+body.ep-page .field-label{margin:18px 0 2px;}
+html[data-theme] body.ep-page input[type="text"],
+html[data-theme] body.ep-page input[type="email"],
+html[data-theme] body.ep-page textarea{
+  width:100%; background:transparent; border:none; border-bottom:1.5px solid var(--border);
+  border-radius:0; padding:10px 0; box-shadow:none; color:var(--text); font-size:16px;
+  font-family:inherit; outline:none;
+}
+html[data-theme] body.ep-page input[type="text"]:focus,
+html[data-theme] body.ep-page input[type="email"]:focus,
+html[data-theme] body.ep-page textarea:focus{border-bottom-color:var(--accent); box-shadow:none;}
+html[data-theme] body.ep-page input:disabled{color:var(--text-dim); opacity:.8;}
+body.ep-page textarea{resize:none; line-height:1.5;}
+body.ep-page .repo-opt-row{border:none; background:none; padding:6px 0; margin-top:20px;}
+body.ep-page #ep-save{margin-top:22px;}
+@media (min-width:860px){
+  body.ep-page #ep-connected .box-card{display:grid; grid-template-columns:260px 1fr; column-gap:40px; align-items:start;}
+  body.ep-page #ep-connected .box-card .settings-section-head{grid-column:1; grid-row:1 / span 6;}
+  body.ep-page #ep-connected .box-card > :not(.settings-section-head){grid-column:2;}
+}
+
+/* --- Profile: Repos / Starred / Gists / Orgs as ONE full-width strip --- */
+.pf-stats{
+  gap:0; margin:0 -16px 16px; border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  border-radius:0; background:none;
+}
+@media (min-width:860px){ .pf-stats{margin-left:-32px; margin-right:-32px;} }
+.pf-stat{
+  background:none; border:none; border-radius:0; padding:14px 4px;
+  border-right:1px solid var(--border);
+}
+.pf-stat:last-child{border-right:none;}
+.pf-stat b{font-size:19px;}
+
+/* --- Manage files: full-screen, no boxes --- */
+body.manage-mode .custom-content{max-width:none; padding:12px 18px 40px;}
+@media (min-width:860px){ body.manage-mode .custom-content{padding:24px 40px 48px;} }
+body.manage-mode .page-header{margin-bottom:6px; padding-bottom:14px; border-bottom:1px solid var(--border);}
+body.manage-mode .field-label{margin:18px 0 2px;}
+html[data-theme] body.manage-mode #repo-browser-card input[type="text"]{
+  background:transparent; border:none; border-bottom:1.5px solid var(--border);
+  border-radius:0; padding:10px 0; box-shadow:none;
+}
+html[data-theme] body.manage-mode #repo-browser-card input[type="text"]:focus{border-bottom-color:var(--accent); box-shadow:none;}
+
+/* stats: one strip */
+.fb-stats{gap:0; margin:0 -18px 14px; border-top:1px solid var(--border); border-bottom:1px solid var(--border);}
+.fb-stat{background:none; border:none; border-radius:0; padding:12px 6px; border-right:1px solid var(--border);}
+.fb-stat:last-child{border-right:none;}
+@media (min-width:860px){ .fb-stats{margin-left:-40px; margin-right:-40px;} }
+
+/* file rows: flat list with hairlines */
+.fb-list{gap:0; margin-bottom:24px;}
+.file-row.fb-row{
+  background:none; border:none; border-bottom:1px solid var(--border); border-left:none;
+  border-radius:0; box-shadow:none; padding:14px 0;
+}
+.file-row.fb-row:last-child{border-bottom:none;}
+.file-row.fb-row:hover{transform:none; box-shadow:none; background:var(--surface-2);}
+.file-row.fb-apk{background:none;}
+.file-row.fb-apk:hover{background:var(--surface-2);}
+.fb-size{background:none; border:none; padding:0; color:var(--text-dim); font-weight:700;}
