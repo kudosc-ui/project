@@ -9,8 +9,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>GitSync — Custom</title>
-<meta name="description" content="Create repositories, host GitHub Pages, and browse or edit files — all from GitSync.">
+<title>GitSync — All Repositories</title>
+<meta name="description" content="Every repository on your GitHub account — browse, publish, manage files or delete.">
 
 <!-- Theme applied before first paint to avoid a flash of the wrong theme -->
 <script>
@@ -38,7 +38,7 @@
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 </head>
-<body>
+<body class="repos-page">
 
 <div id="app-shell">
 
@@ -71,102 +71,24 @@
     </div>
   </div>
 
-  <!-- ============ CUSTOM PAGE CONTENT ============ -->
+  <!-- ============ ALL REPOSITORIES ============ -->
   <div id="custom-connected" class="hidden">
     <div class="content custom-content">
 
-      <div class="connected-row flat-row">
-        <span class="dot dot-green"></span>
-        <span>Connected as <strong id="custom-username-label">—</strong></span>
-      </div>
-
-      <div class="custom-col custom-col-create">
-      <div class="settings-section">
-        <div class="settings-section-head">
-          <span class="settings-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          </span>
-          <div>
-            <div class="settings-section-title">Create New Repository</div>
-            <div class="settings-section-sub">Spin up a fresh repo, optionally seeded from a ZIP</div>
-          </div>
+      <div class="page-header repos-header">
+        <a href="custom.html" class="icon-btn back-btn" aria-label="Back to Custom" title="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></a>
+        <div class="page-header-title">
+          <div class="page-header-title-main">All Repositories</div>
+          <div class="page-header-title-sub" id="custom-repo-count">Loading…</div>
         </div>
-
-        <label class="field-label" for="new-repo-name">Repository Name</label>
-        <input type="text" id="new-repo-name" placeholder="my-new-project" autocomplete="off">
-
-        <label class="field-label">Visibility</label>
-        <div class="segmented">
-          <label class="segmented-opt"><input type="radio" name="new-repo-visibility" value="public" checked><span>Public</span></label>
-          <label class="segmented-opt"><input type="radio" name="new-repo-visibility" value="private"><span>Private</span></label>
-        </div>
-
-        <label class="field-label" for="new-repo-desc">Description <span class="hint-inline">(optional — 0–300 characters)</span></label>
-        <textarea id="new-repo-desc" rows="3" maxlength="300" placeholder="What is this project about?"></textarea>
-        <div class="char-count"><span id="new-repo-desc-count">0</span>/300</div>
-
-        <label class="checkbox-row repo-opt-row" for="new-repo-readme">
-          <input type="checkbox" id="new-repo-readme">
-          <span><b>Add a README file</b><small>A place to describe your project</small></span>
-        </label>
-
-        <label class="field-label" for="new-repo-gitignore">Add .gitignore <span class="hint-inline">(optional)</span></label>
-        <select id="new-repo-gitignore"><option value="">No .gitignore</option></select>
-
-        <label class="field-label" for="new-repo-license">Add license <span class="hint-inline">(optional)</span></label>
-        <select id="new-repo-license"><option value="">No license</option></select>
-        <p class="hint hidden" id="new-repo-options-hint"></p>
-
-        <label class="field-label">Project ZIP <span class="hint-inline">(optional — extracted and pushed as the first commit)</span></label>
-        <label class="dz" id="zip-dz" for="new-repo-zip-input"><span class="dz-ico">📦</span><b>Drop your ZIP here or tap to browse</b><small>Your whole project in one .zip file</small></label>
-        <input type="file" id="new-repo-zip-input" accept=".zip,application/zip" class="hidden">
-        <div class="dz-file hidden" id="zip-chip"><span id="zip-chip-name"></span><button type="button" class="btn-link small" id="zip-chip-remove">Remove</button></div>
-
-        <button id="create-repo-btn" class="btn btn-primary btn-block" style="margin-top:16px">Create Repository</button>
-        <p id="create-repo-error" class="error-text hidden"></p>
-        <button id="create-repo-retry-btn" class="btn btn-secondary btn-block hidden" style="margin-top:10px">Retry Upload</button>
-      </div>
-
-      <div class="flat-panel-center hidden" id="create-repo-progress-card">
-        <div id="create-repo-progress-label" class="progress-label">Creating repository…</div>
-        <div class="progress-track"><div id="create-repo-progress-bar" class="progress-fill" style="width:0%"></div></div>
-        <div id="create-repo-progress-percent" class="progress-percent">0%</div>
-        <div id="create-repo-progress-detail" class="progress-detail"></div>
-      </div>
-
-      <div class="settings-section hidden" id="create-repo-success-card">
-        <div class="settings-section-title" style="margin-bottom:8px">Repository Created</div>
-        <div id="create-repo-result-name" class="commit-msg">—</div>
-        <a id="create-repo-result-link" class="btn-link" href="#" target="_blank" rel="noopener">Open on GitHub ↗</a>
-        <p id="create-repo-skip-note" class="hint hidden" style="margin-top:8px"></p>
-        <button id="enable-pages-btn" class="btn btn-secondary btn-block hidden" style="margin-top:12px">Host with GitHub Pages</button>
-        <div id="pages-result-row" class="hidden" style="margin-top:10px">
-          <div class="field-label" style="margin-top:0">Live URL</div>
-          <a id="pages-result-link" class="static-value" href="#" target="_blank" rel="noopener">—</a>
-          <p class="hint">It can take a minute or two for GitHub Pages to finish deploying.</p>
+        <div class="connected-row flat-row repos-connected">
+          <span class="dot dot-green"></span>
+          <span>Connected as <strong id="custom-username-label">—</strong></span>
         </div>
       </div>
 
-      </div><!-- /custom-col-create -->
-
-      <div class="settings-divider"></div>
-
-      <div class="custom-col custom-col-repos">
-
-      <div class="settings-section">
-        <div class="settings-section-head">
-          <span class="settings-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-          </span>
-          <div>
-            <div class="settings-section-title">Your Repositories</div>
-            <div class="settings-section-sub">Your 3 most recently updated repositories</div>
-          </div>
-        </div>
-        <div id="custom-repo-list" class="file-list repo-list-compact" style="margin-top:12px"></div>
-        <a id="view-all-repos" href="repos.html" class="btn btn-secondary btn-block view-all-btn hidden">View All Repositories <span id="view-all-count"></span> <span aria-hidden="true">→</span></a>
-      </div>
-      </div><!-- /custom-col-repos -->
+      <input type="text" id="custom-repo-search" class="repos-search" placeholder="Search repositories…" autocomplete="off">
+      <div id="custom-repo-list" class="file-list repo-grid"></div>
 
       <div class="hidden" id="repo-browser-card">
         <div class="page-header">

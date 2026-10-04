@@ -20,6 +20,11 @@
     browsing: null // { owner, repoName, branch, treeMap: Map<path,{sha,size}> }
   };
 
+  // The Custom page previews only the most recent repos; repos.html ("View All")
+  // lists every one of them. Same script drives both pages.
+  const IS_ALL_PAGE = document.body.classList.contains('repos-page');
+  const TOP_LIMIT = 3;
+
   function splitFullName(fullName) {
     const [owner, repo] = fullName.split('/');
     return { owner, repo };
@@ -72,7 +77,7 @@
     const account = Auth.getActiveAccount();
     document.getElementById('custom-username-label').textContent = account ? account.login : '…';
     loadRepoList();
-    loadRepoOptions();
+    if (document.getElementById('new-repo-gitignore')) loadRepoOptions();
   }
 
   // ---------------- Repository list ----------------
@@ -91,9 +96,24 @@
 
   function renderRepoList() {
     const container = document.getElementById('custom-repo-list');
-    const search = (document.getElementById('custom-repo-search').value || '').toLowerCase();
-    const repos = state.repos.filter(r => r.full_name.toLowerCase().includes(search));
+    const searchEl = document.getElementById('custom-repo-search');
+    const search = ((searchEl && searchEl.value) || '').toLowerCase();
+    const matches = state.repos.filter(r => r.full_name.toLowerCase().includes(search));
+    const repos = IS_ALL_PAGE ? matches : matches.slice(0, TOP_LIMIT);
     container.innerHTML = '';
+
+    const countEl = document.getElementById('custom-repo-count');
+    if (countEl) {
+      countEl.textContent = search
+        ? `${matches.length} of ${state.repos.length} repositories`
+        : `${state.repos.length} ${state.repos.length === 1 ? 'repository' : 'repositories'}`;
+    }
+    const viewAll = document.getElementById('view-all-repos');
+    if (viewAll) {
+      viewAll.classList.toggle('hidden', !state.repos.length);
+      const n = document.getElementById('view-all-count');
+      if (n) n.textContent = `(${state.repos.length})`;
+    }
 
     if (!repos.length) {
       container.innerHTML = '<div class="hint" style="padding:10px 0">No repositories found.</div>';
@@ -540,6 +560,7 @@
 
   function initCreateOptions() {
     const desc = document.getElementById('new-repo-desc');
+    if (!desc) return;
     desc.addEventListener('input', () => {
       document.getElementById('new-repo-desc-count').textContent = String(desc.value.length);
     });
@@ -948,6 +969,7 @@
 
   function initDropzone() {
     const input = document.getElementById('new-repo-zip-input');
+    if (!input) return; // not on this page (e.g. repos.html)
     const dz = document.getElementById('zip-dz');
     const chip = document.getElementById('zip-chip');
     const refresh = () => {
@@ -973,9 +995,12 @@
     initDropzone();
 
     initCreateOptions();
-    document.getElementById('create-repo-btn').addEventListener('click', handleCreateRepo);
-    document.getElementById('create-repo-retry-btn').addEventListener('click', handleRetryRepoUpload);
-    document.getElementById('custom-repo-search').addEventListener('input', renderRepoList);
+    const createBtn = document.getElementById('create-repo-btn');
+    if (createBtn) createBtn.addEventListener('click', handleCreateRepo);
+    const retryBtn = document.getElementById('create-repo-retry-btn');
+    if (retryBtn) retryBtn.addEventListener('click', handleRetryRepoUpload);
+    const searchBox = document.getElementById('custom-repo-search');
+    if (searchBox) searchBox.addEventListener('input', renderRepoList);
     document.getElementById('repo-browser-close').addEventListener('click', leaveManage);
     document.getElementById('rename-repo-btn').addEventListener('click', handleRenameRepo);
 
