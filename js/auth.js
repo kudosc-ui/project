@@ -20,6 +20,29 @@
 const Auth = (() => {
   const ACCOUNTS_KEY = 'gitsync_accounts';
   const ACTIVE_KEY = 'gitsync_active_login';
+  // '0' = "don't remember me": accounts live in sessionStorage and vanish when
+  // the tab/app is closed. Anything else (default) = saved on this device.
+  const REMEMBER_KEY = 'gitsync_remember';
+
+  function remembering() {
+    try { return localStorage.getItem(REMEMBER_KEY) !== '0'; } catch (e) { return true; }
+  }
+  function store() { return remembering() ? localStorage : sessionStorage; }
+
+  /** Switches between "remember on this device" and "this session only", moving saved accounts across. */
+  function setRemember(on) {
+    const from = store();
+    const accounts = from.getItem(ACCOUNTS_KEY);
+    const active = from.getItem(ACTIVE_KEY);
+    try { localStorage.setItem(REMEMBER_KEY, on ? '1' : '0'); } catch (e) { /* ignore */ }
+    const to = store();
+    if (to !== from) {
+      if (accounts) to.setItem(ACCOUNTS_KEY, accounts);
+      if (active) to.setItem(ACTIVE_KEY, active);
+      from.removeItem(ACCOUNTS_KEY);
+      from.removeItem(ACTIVE_KEY);
+    }
+  }
 
   // Superseded single-token keys from earlier versions of GitSync, migrated
   // automatically into the accounts list on first load.
@@ -28,7 +51,7 @@ const Auth = (() => {
 
   function loadAccounts() {
     try {
-      const raw = localStorage.getItem(ACCOUNTS_KEY);
+      const raw = store().getItem(ACCOUNTS_KEY);
       const parsed = raw ? JSON.parse(raw) : [];
       return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
@@ -37,7 +60,7 @@ const Auth = (() => {
   }
 
   function saveAccounts(accounts) {
-    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+    store().setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
   }
 
   function getAccounts() {
@@ -45,7 +68,7 @@ const Auth = (() => {
   }
 
   function getActiveLogin() {
-    return localStorage.getItem(ACTIVE_KEY);
+    return store().getItem(ACTIVE_KEY);
   }
 
   function getActiveAccount() {
@@ -72,14 +95,14 @@ const Auth = (() => {
     const entry = { login, token, avatarUrl: avatarUrl || null };
     if (idx >= 0) accounts[idx] = entry; else accounts.push(entry);
     saveAccounts(accounts);
-    localStorage.setItem(ACTIVE_KEY, login);
+    store().setItem(ACTIVE_KEY, login);
     // The account list is now the single source of truth for this login.
     sessionStorage.removeItem(LEGACY_SESSION_KEY);
     localStorage.removeItem(LEGACY_LOCAL_KEY);
   }
 
   function setActiveAccount(login) {
-    localStorage.setItem(ACTIVE_KEY, login);
+    store().setItem(ACTIVE_KEY, login);
   }
 
   function removeAccount(login) {
@@ -87,9 +110,9 @@ const Auth = (() => {
     saveAccounts(accounts);
     if (getActiveLogin() === login) {
       if (accounts.length) {
-        localStorage.setItem(ACTIVE_KEY, accounts[0].login);
+        store().setItem(ACTIVE_KEY, accounts[0].login);
       } else {
-        localStorage.removeItem(ACTIVE_KEY);
+        store().removeItem(ACTIVE_KEY);
       }
     }
   }
@@ -144,6 +167,7 @@ const Auth = (() => {
   return {
     getAccounts, getActiveLogin, getActiveAccount, getToken,
     upsertAccount, setActiveAccount, removeAccount, clearToken,
-    validateToken
+    validateToken,
+    setRemember, remembering
   };
 })();

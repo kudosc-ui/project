@@ -8,20 +8,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://api.github.com; font-src 'self' data:; frame-src about:; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'; manifest-src 'self'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>GitSync — Home</title>
 <meta name="description" content="Sync a local project folder to a GitHub repository in one clean commit.">
 
 <!-- Theme applied before first paint to avoid a flash of the wrong theme -->
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('gitsync-theme');
-    if(!t){ t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
-    document.documentElement.setAttribute('data-theme', t);
-  }catch(e){}
-})();
-</script>
+<script src="js/theme-init.js"></script>
 
 <link rel="stylesheet" href="style.css">
 
@@ -64,6 +58,11 @@
     <label class="field-label" for="pat-input">GitHub Personal Access Token</label>
     <input id="pat-input" type="password" placeholder="ghp_..." autocomplete="off" spellcheck="false">
     <p class="hint">Needs the <code>repo</code> scope. Nothing is sent anywhere except GitHub's API.</p>
+
+    <label class="checkbox-row repo-opt-row" for="remember-me">
+      <input type="checkbox" id="remember-me" checked>
+      <span><b>Remember me on this device</b><small>Untick on a shared or public device — you'll be signed out when you close the tab</small></span>
+    </label>
 
     <button id="connect-btn" class="btn btn-primary btn-block">Connect to GitHub</button>
     <p id="auth-error" class="error-text hidden"></p>
@@ -739,9 +738,9 @@
 <div id="toast" class="toast hidden"></div>
 
 <!-- JSZip: the one third-party utility used, purely for reading .zip archives
-     client-side. Loaded from a pinned version on cdnjs; everything else in
+     client-side. Self-hosted in js/vendor (no third-party CDN); everything else in
      this app remains hand-written vanilla JS. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="js/vendor/jszip.min.js"></script>
 <script src="js/offline.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/github.js"></script>
@@ -756,17 +755,6 @@
 <script src="js/app.js"></script>
 <script src="js/navprofile.js"></script>
 <script src="js/theme.js"></script>
-<script>
-(function(){
-  var url = new URL('setup.html', location.href).href;
-  var label = document.getElementById('setup-url'); if (label) label.textContent = url;
-  var btn = document.getElementById('copy-setup-link');
-  if (btn) btn.addEventListener('click', function(){
-    if (navigator.clipboard) navigator.clipboard.writeText(url);
-    btn.textContent = 'Link copied ✓';
-    setTimeout(function(){ btn.textContent = 'Copy guide link'; }, 1600);
-  });
-})();
-</script>
+<script src="js/setup-link.js"></script>
 </body>
 </html>

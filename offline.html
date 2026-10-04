@@ -6,11 +6,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://api.github.com; font-src 'self' data:; frame-src about:; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'; manifest-src 'self'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>GitSync — You're offline</title>
-<script>
-(function(){try{var t=localStorage.getItem('gitsync-theme');if(!t)t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
-</script>
+<script src="js/theme-init.js"></script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/favicon.ico" sizes="any">
 <meta name="theme-color" content="#5b7cff">
@@ -63,31 +63,6 @@ button.spin svg{animation:spin .8s linear infinite}
   <div class="status" id="status" aria-live="polite"></div>
   <div class="foot">Your GitHub account stays saved on this device.</div>
 </main>
-<script>
-(function(){
-  var btn=document.getElementById('refresh'),label=document.getElementById('label'),status=document.getElementById('status');
-  function ping(){
-    return new Promise(function(resolve){
-      var done=false,c=window.AbortController?new AbortController():null;
-      var t=setTimeout(function(){if(done)return;done=true;if(c)c.abort();resolve(false);},6000);
-      fetch('manifest.json?__ping='+Date.now(),{cache:'no-store',signal:c?c.signal:undefined})
-        .then(function(r){if(done)return;done=true;clearTimeout(t);resolve(r.status<500);})
-        .catch(function(){if(done)return;done=true;clearTimeout(t);resolve(false);});
-    });
-  }
-  function go(){
-    if(/offline\.html$/.test(location.pathname)) location.replace('./index.html'); else location.reload();
-  }
-  btn.addEventListener('click',function(){
-    btn.disabled=true;btn.classList.add('spin');label.textContent='Checking connection\u2026';status.textContent='';status.className='status';
-    ping().then(function(ok){
-      if(ok){go();return;}
-      btn.disabled=false;btn.classList.remove('spin');label.textContent='Refresh';
-      status.textContent='Still no connection. Check Wi\u2011Fi or mobile data and try again.';status.className='status err';
-    });
-  });
-  window.addEventListener('online',function(){ping().then(function(ok){if(ok){status.textContent='Connection restored \u2014 tap Refresh.';status.className='status';}});});
-})();
-</script>
+<script src="js/offline-page.js"></script>
 </body>
 </html>

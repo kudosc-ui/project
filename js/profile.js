@@ -65,19 +65,31 @@
     catch (e) { return ''; }
   }
 
-  /** GitHub already sanitises its rendered README HTML; this is a second layer of defence. */
+  /**
+   * GitHub already sanitises its rendered README HTML; DOMPurify is a second,
+   * well-tested layer. Fails closed: if DOMPurify did not load, the README is
+   * shown as plain text instead of falling back to a weaker hand-written filter.
+   */
+  let purifyHooked = false;
   function sanitizeHtml(html) {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    doc.querySelectorAll('script,style,iframe,object,embed,form,link,meta,base,svg').forEach((n) => n.remove());
-    doc.body.querySelectorAll('*').forEach((el) => {
-      Array.from(el.attributes).forEach((a) => {
-        const n = a.name.toLowerCase();
-        const bad = /^\s*(javascript|vbscript|data:text\/html)/i.test(a.value);
-        if (n.startsWith('on') || ((n === 'href' || n === 'src') && bad)) el.removeAttribute(a.name);
+    if (!window.DOMPurify) {
+      const d = document.createElement('div');
+      d.textContent = String(html).replace(/<[^>]*>/g, ' ');
+      return d.innerHTML;
+    }
+    if (!purifyHooked) {
+      purifyHooked = true;
+      window.DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+        if (node.tagName === 'A') { node.setAttribute('target', '_blank'); node.setAttribute('rel', 'noopener noreferrer'); }
       });
-      if (el.tagName === 'A') { el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener noreferrer'); }
+    }
+    return window.DOMPurify.sanitize(String(html), {
+      USE_PROFILES: { html: true },
+      FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select', 'svg', 'math', 'iframe', 'object', 'embed', 'link', 'meta', 'base'],
+      FORBID_ATTR: ['style'],
+      ADD_ATTR: ['target'],
+      ALLOW_DATA_ATTR: false
     });
-    return doc.body.innerHTML;
   }
 
   // ---------------- Boot ----------------

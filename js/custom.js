@@ -128,7 +128,7 @@
       const published = !repo.private && (repo.has_pages || cached);
       let extra = '';
       if (repo.private) {
-        extra = `<div class="private-note">🔒 <b>Private repository</b> — GitSync can't publish private repos. Publish it from GitHub: <a href="${repo.html_url}/settings/pages" target="_blank" rel="noopener">Settings → Pages ↗</a></div>`;
+        extra = `<div class="private-note">🔒 <b>Private repository</b> — GitSync can't publish private repos. Publish it from GitHub: <a href="${UI.safeUrl(repo.html_url + '/settings/pages')}" target="_blank" rel="noopener">Settings → Pages ↗</a></div>`;
       }
       const row = document.createElement('div');
       row.className = 'file-row';
@@ -139,7 +139,7 @@
         </div>
         <div class="repo-row-actions">
           <button class="btn-link small" data-action="browse">Manage Files</button>
-          <a class="btn-link small" href="${repo.html_url}" target="_blank" rel="noopener">Open on GitHub ↗</a>
+          <a class="btn-link small" href="${UI.safeUrl(repo.html_url)}" target="_blank" rel="noopener">Open on GitHub ↗</a>
           ${!repo.private && !published ? '<button class="btn-link small" data-action="publish">Publish ↗</button>' : ''}
         </div>
         ${extra}
@@ -235,7 +235,7 @@
   function revealPublishLink(resultRow, url, status) {
     resultRow.classList.remove('hidden');
     const building = status === 'building' || status === 'queued';
-    resultRow.innerHTML = `<span class="live-dot ${building ? 'building' : ''}"></span>${building ? 'Going live' : 'Live'} at <a href="${url}" target="_blank" rel="noopener">${UI.escapeHtml(url)}</a>
+    resultRow.innerHTML = `<span class="live-dot ${building ? 'building' : ''}"></span>${building ? 'Going live' : 'Live'} at <a href="${UI.safeUrl(url)}" target="_blank" rel="noopener">${UI.escapeHtml(url)}</a>
       <button class="btn-link small" data-copy="${UI.escapeHtml(url)}" style="margin-left:6px">Copy</button>`;
   }
   document.addEventListener('click', (ev) => {

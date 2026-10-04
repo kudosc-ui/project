@@ -100,6 +100,8 @@
     btn.textContent = 'Connecting…';
     try {
       const user = await Auth.validateToken(token);
+      const rememberBox = document.getElementById('remember-me');
+      Auth.setRemember(!rememberBox || rememberBox.checked);
       Auth.upsertAccount(user.login, token, user.avatar_url);
       await enterApp(user);
     } catch (e) {

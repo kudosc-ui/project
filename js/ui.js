@@ -309,7 +309,17 @@ const UI = (() => {
     return { added: 'ADDED', modified: 'MODIFIED', deleted: 'DELETED', unchanged: 'UNCHANGED' }[status] || status.toUpperCase();
   }
 
+  function safeUrl(u) {
+    // Only http(s) links are ever rendered; anything else becomes a dead '#'.
+    if (!u) return '#';
+    try {
+      const x = new URL(String(u), location.href);
+      return /^https?:$/.test(x.protocol) ? escapeHtml(x.href) : '#';
+    } catch (e) { return '#'; }
+  }
+
   function escapeHtml(s) {
+    s = String(s == null ? '' : s);
     return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
@@ -607,7 +617,7 @@ const UI = (() => {
           ${authorDate ? relativeTime(authorDate) + ' · ' : ''}<code>${commitInfo.sha.slice(0, 7)}</code>
           ${statParts.length ? ' · ' + statParts.join(' ') : ''}
         </div>
-        <a class="btn-link" href="${commitInfo.html_url || '#'}" target="_blank" rel="noopener">View this commit on GitHub ↗</a>
+        <a class="btn-link" href="${safeUrl(commitInfo.html_url)}" target="_blank" rel="noopener">View this commit on GitHub ↗</a>
       </div>
       ${banner}
       <div class="live-commit-section">
@@ -625,7 +635,7 @@ const UI = (() => {
     renderRepoOptions, renderBranchOptions, renderAppCommitRow,
     renderCommitHistoryLoading, renderCommitHistory,
     renderSummaryCounts, renderDeletionsWarning, renderFileList,
-    openDiffModal, closeDiffModal, renderDiffOps, escapeHtml,
+    openDiffModal, closeDiffModal, renderDiffOps, escapeHtml, safeUrl,
     initSyncResultsList, setSyncResultStatus, renderSyncSummary, setSyncProgress,
     renderSuccessView, updateSuccessVerify,
     renderLiveCommitLoading, renderLiveCommitError, renderLiveCommit

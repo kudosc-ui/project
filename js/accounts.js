@@ -15,9 +15,9 @@ const AccountsUI = (() => {
 
   function avatarHtml(account) {
     if (account.avatarUrl) {
-      return `<img class="account-avatar" src="${account.avatarUrl}" alt="${account.login}">`;
+      return `<img class="account-avatar" src="${UI.safeUrl(account.avatarUrl)}" alt="${UI.escapeHtml(account.login)}">`;
     }
-    const initial = account.login.charAt(0).toUpperCase();
+    const initial = UI.escapeHtml(account.login.charAt(0).toUpperCase());
     return `<span class="account-avatar account-avatar-fallback">${initial}</span>`;
   }
 
