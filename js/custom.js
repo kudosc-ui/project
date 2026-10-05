@@ -75,7 +75,8 @@
     }
     document.getElementById('custom-connected').classList.remove('hidden');
     const account = Auth.getActiveAccount();
-    document.getElementById('custom-username-label').textContent = account ? account.login : '…';
+    const uLabel = document.getElementById('custom-username-label');
+    if (uLabel) uLabel.textContent = account ? account.login : '…';
     loadRepoList();
     if (document.getElementById('new-repo-gitignore')) loadRepoOptions();
   }

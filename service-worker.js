@@ -23,7 +23,7 @@
 
    IMPORTANT: bump CACHE_VERSION whenever the app shell changes. */
 
-const CACHE_VERSION = 'gitsync-v15';
+const CACHE_VERSION = 'gitsync-v16';
 const NAV_TIMEOUT_MS = 6000;
 const ASSET_TIMEOUT_MS = 10000;
 const OFFLINE_URL = './offline.html';
