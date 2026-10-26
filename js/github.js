@@ -247,6 +247,40 @@ const GitHub = (() => {
     });
   }
 
+  // ---- Download a whole repository as a ZIP ----
+
+  /**
+   * GET /repos/{owner}/{repo}/zipball/{ref} — GitHub answers with a redirect to a
+   * short-lived codeload.github.com URL (pre-signed for private repos) and the
+   * browser follows it. Returns the ZIP as a Blob. Works for public AND private
+   * repos with the same token GitSync already uses.
+   */
+  async function downloadZipball(owner, repo, ref) {
+    let res;
+    try {
+      res = await fetch(`${BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/zipball/${ref ? encodeURIComponent(ref) : ''}`, { headers: headers() });
+    } catch (e) {
+      const err = new Error('Network error while downloading from GitHub.');
+      err.kind = 'network';
+      throw err;
+    }
+    if (res.status === 401) { const err = new Error('GitHub authentication expired. Please reconnect your GitHub account.'); err.kind = 'auth'; throw err; }
+    if (res.status === 403) {
+      const remaining = res.headers.get('x-ratelimit-remaining');
+      const err = new Error(remaining === '0' ? 'GitHub API rate limit reached. Please wait a few minutes and try again.' : 'Permission denied for this action on GitHub.');
+      err.kind = remaining === '0' ? 'rate_limit' : 'permission';
+      throw err;
+    }
+    if (res.status === 404) { const err = new Error('That repository, branch, or resource could not be found.'); err.kind = 'not_found'; throw err; }
+    if (!res.ok) { const err = new Error(`Download failed (status ${res.status}).`); err.kind = 'unknown'; throw err; }
+    return res.blob();
+  }
+
+  /** One file's content (base64) by blob sha — used by the ZIP fallback. */
+  function getBlob(owner, repo, sha) {
+    return request(`/repos/${owner}/${repo}/git/blobs/${sha}`);
+  }
+
   // ---- GitHub Pages ----
 
   function enablePages(owner, repo, branch, path = '/') {
@@ -305,6 +339,6 @@ const GitHub = (() => {
     createRepo, listLicenses, listGitignoreTemplates, getRepo, deleteRepo, createRef,
     getUser, updateUser, renameRepo, listOrgs, listFollowers, listFollowing, listStarred, starredCount, graphql, getProfileReadmeHtml,
     getContents, putContents, deleteFileContents,
-    enablePages, getPages
+    enablePages, getPages, downloadZipball, getBlob
   };
 })();

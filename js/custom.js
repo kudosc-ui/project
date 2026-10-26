@@ -133,18 +133,24 @@
       }
       const row = document.createElement('div');
       row.className = 'file-row';
+      const ghText = String(repo.html_url || '').replace(/^https?:\/\//, '');
       row.innerHTML = `
         <div class="file-row-top">
           <span class="file-path">${UI.escapeHtml(repo.full_name)}</span>
           <span class="visibility-badge ${repo.private ? 'private' : 'public'}">${repo.private ? 'PRIVATE' : 'PUBLIC'}</span>
         </div>
+        <div class="repo-link-row" data-role="github-row">
+          <span class="repo-link-label">GitHub</span>
+          <a class="repo-link-url" href="${UI.safeUrl(repo.html_url)}" target="_blank" rel="noopener" title="Open this repository on GitHub">${UI.escapeHtml(ghText)} ↗</a>
+          <button class="btn-link small" data-copy="${UI.escapeHtml(repo.html_url)}">Copy</button>
+        </div>
+        <div class="publish-row ${published ? '' : 'hidden'}" data-role="publish-row"></div>
+        ${extra}
         <div class="repo-row-actions">
+          <button class="btn-download" data-action="download" title="Download every file of this repository as one ZIP">⬇ Download ZIP</button>
           <button class="btn-link small" data-action="browse">Manage Files</button>
-          <a class="btn-link small" href="${UI.safeUrl(repo.html_url)}" target="_blank" rel="noopener">Open on GitHub ↗</a>
           ${!repo.private && !published ? '<button class="btn-link small" data-action="publish">Publish ↗</button>' : ''}
         </div>
-        ${extra}
-        <div class="publish-row ${published ? '' : 'hidden'}" data-role="publish-row"></div>
       `;
       const resultRow = row.querySelector('[data-role="publish-row"]');
       if (published) {
@@ -152,6 +158,8 @@
         queue.push({ repo, owner, rname, resultRow });
       }
       row.querySelector('[data-action="browse"]').addEventListener('click', () => browseRepo(repo.full_name));
+      const dlBtn = row.querySelector('[data-action="download"]');
+      dlBtn.addEventListener('click', () => downloadRepoZip(repo, dlBtn));
       const publishBtn = row.querySelector('[data-action="publish"]');
       if (publishBtn) publishBtn.addEventListener('click', () => handlePublishRepoRow(repo, publishBtn, resultRow));
       container.appendChild(row);
@@ -236,8 +244,10 @@
   function revealPublishLink(resultRow, url, status) {
     resultRow.classList.remove('hidden');
     const building = status === 'building' || status === 'queued';
-    resultRow.innerHTML = `<span class="live-dot ${building ? 'building' : ''}"></span>${building ? 'Going live' : 'Live'} at <a href="${UI.safeUrl(url)}" target="_blank" rel="noopener">${UI.escapeHtml(url)}</a>
-      <button class="btn-link small" data-copy="${UI.escapeHtml(url)}" style="margin-left:6px">Copy</button>`;
+    resultRow.classList.add('repo-link-row', 'live');
+    resultRow.innerHTML = `<span class="repo-link-label live"><span class="live-dot ${building ? 'building' : ''}"></span>${building ? 'Going live' : 'Live page'}</span>
+      <a class="repo-link-url" href="${UI.safeUrl(url)}" target="_blank" rel="noopener" title="Open the live website">${UI.escapeHtml(url.replace(/^https?:\/\//, ''))} ↗</a>
+      <button class="btn-link small" data-copy="${UI.escapeHtml(url)}">Copy</button>`;
   }
   document.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-copy]');
@@ -246,6 +256,73 @@
     b.textContent = 'Copied ✓';
     setTimeout(() => { b.textContent = 'Copy'; }, 1500);
   });
+
+  // ---------------- Download a whole repository as one ZIP ----------------
+
+  function saveBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  /**
+   * Fallback if the direct ZIP download is blocked (e.g. a network that blocks
+   * codeload.github.com): read the repo's file tree and zip it in the browser.
+   */
+  async function buildZipFromTree(owner, rname, branch, onProgress) {
+    const ref = await GitHub.getRef(owner, rname, branch);
+    const commit = await GitHub.getCommit(owner, rname, ref.object.sha);
+    const tree = await GitHub.getTree(owner, rname, commit.tree.sha, true);
+    if (tree.truncated) throw new Error('This repository is too large to zip from here. Try again on a faster connection.');
+    const files = (tree.tree || []).filter(t => t.type === 'blob');
+    if (!files.length) throw new Error('This repository has no files to download yet.');
+    const zip = new JSZip();
+    const queue = files.slice();
+    let done = 0;
+    const workers = Array.from({ length: 5 }, async () => {
+      while (queue.length) {
+        const f = queue.shift();
+        const blob = await GitHub.getBlob(owner, rname, f.sha);
+        zip.file(f.path, String(blob.content || '').replace(/\n/g, ''), { base64: true });
+        onProgress(++done, files.length);
+      }
+    });
+    await Promise.all(workers);
+    return zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+  }
+
+  async function downloadRepoZip(repo, btn) {
+    if (btn.disabled) return;
+    const { owner, repo: rname } = splitFullName(repo.full_name);
+    const branch = repo.default_branch || 'main';
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Preparing ZIP…';
+    try {
+      let blob;
+      try {
+        blob = await GitHub.downloadZipball(owner, rname, branch);
+      } catch (e) {
+        // Real account/permission problems are reported as-is; anything else
+        // (network/CORS/redirect blocked) falls back to zipping in the browser.
+        if (e && ['auth', 'permission', 'not_found', 'rate_limit'].includes(e.kind)) throw e;
+        blob = await buildZipFromTree(owner, rname, branch, (d, t) => { btn.textContent = `Zipping ${d}/${t}…`; });
+      }
+      saveBlob(blob, `${rname}.zip`);
+      UI.toast(`Downloaded ${rname}.zip`);
+    } catch (e) {
+      UI.toast(friendlyError(e));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
 
   // ---------------- Create repository ----------------
 

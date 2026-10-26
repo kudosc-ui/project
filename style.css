@@ -1648,3 +1648,29 @@ html[data-theme] #view-settings #add-account-token:focus{border-bottom-color:var
 @media (min-width:1500px){
   #view-settings.active{grid-template-columns:none;}
 }
+
+/* =====================================================================
+   Repository rows: separate GitHub link + Live page link, one-tap ZIP
+   ===================================================================== */
+.file-row > .repo-link-row, .file-row > .publish-row, .file-row > .repo-row-actions, .file-row > .private-note{flex:1 1 100%; min-width:0; margin:0;}
+.repo-link-row, .publish-row.repo-link-row{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding:7px 10px; border-radius:9px; border-top:none;
+  background:var(--surface-2); font-size:12.5px; color:var(--text-dim);
+}
+.repo-link-label{
+  flex:none; font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--text-dim); min-width:62px;
+}
+.repo-link-label.live{color:var(--green);}
+.repo-link-url{color:var(--accent); font-weight:600; text-decoration:none; overflow-wrap:anywhere; min-width:0; flex:1 1 auto;}
+.repo-link-url:hover{text-decoration:underline;}
+.repo-link-row .btn-link{padding:0; margin:0; flex:none;}
+.repo-row-actions{align-items:center; gap:14px;}
+.btn-download{
+  display:inline-flex; align-items:center; gap:6px; border:none; cursor:pointer; font-family:inherit;
+  font-size:13px; font-weight:700; padding:8px 14px; border-radius:10px;
+  background:var(--accent); color:#fff; transition:transform .15s, opacity .15s;
+}
+.btn-download:hover:not(:disabled){transform:translateY(-1px);}
+.btn-download:disabled{opacity:.7; cursor:progress;}

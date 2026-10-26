@@ -8,7 +8,7 @@ GitSync is fully client-side: your GitHub token is stored in your own browser an
 - If a token may have leaked, delete it at github.com -> Settings -> Developer settings -> Personal access tokens.
 
 ## For the developer
-- A Content-Security-Policy (meta tag in every page) allows only same-origin scripts and network calls to api.github.com. Do not add inline `<script>` blocks or third-party script hosts.
+- A Content-Security-Policy (meta tag in every page) allows only same-origin scripts and network calls to api.github.com (plus codeload.github.com on the repository-list pages, used only for the "Download ZIP" button). Do not add inline `<script>` blocks or third-party script hosts.
 - JSZip and DOMPurify are self-hosted in `js/vendor/`. Update them by replacing the files, then bump `CACHE_VERSION` in `service-worker.js`.
 - Escape everything from GitHub before putting it in `innerHTML` (`UI.escapeHtml`, `UI.safeUrl`).
 - Host GitSync on its own origin. Anything else served from the same origin can read the stored token.
